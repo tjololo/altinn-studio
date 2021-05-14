@@ -1,0 +1,68 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "schema.json",
+  "type": "object",
+  "@xsdNamespaces": {
+    "xsd": "http://www.w3.org/2001/XMLSchema",
+    "xsi": "http://www.w3.org/2001/XMLSchema-instance"
+  },
+  "@xsdSchemaAttributes": {
+    "AttributeFormDefault": "Unqualified",
+    "ElementFormDefault": "Qualified",
+    "BlockDefault": "None",
+    "FinalDefault": "None"
+  },
+  "properties": {
+    "Root": {
+      "properties": {
+        "title": {
+          "$ref": "#/definitions/title",
+          "@xsdType": "#ref"
+        }
+      },
+      "required": [
+        "title"
+      ]
+    }
+  },
+  "definitions": {
+    "title": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/tokenWithLangAndNote"
+        },
+        {
+          "properties": {
+            "value": {
+              "maxLength": 255
+            },
+            "lang": {
+              "type": "string",
+              "@xsdType": "language"
+            },
+            "note": {
+              "type": "string",
+              "@xsdType": "token"
+            }
+          }
+        }
+      ]
+    },
+    "tokenWithLangAndNote": {
+      "properties": {
+        "value": {
+          "type": "string",
+          "@xsdType": "token"
+        },
+        "lang": {
+          "type": "string",
+          "@xsdType": "language"
+        },
+        "note": {
+          "type": "string",
+          "@xsdType": "token"
+        }
+      }
+    }
+  }
+}

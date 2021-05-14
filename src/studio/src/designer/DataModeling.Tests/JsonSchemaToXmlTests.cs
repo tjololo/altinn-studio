@@ -1,4 +1,7 @@
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Schema;
 using Altinn.Studio.DataModeling.Json.Keywords;
 using Altinn.Studio.DataModeling.Visitor;
@@ -11,418 +14,185 @@ namespace DataModeling.Tests
 {
     public class JsonSchemaToXmlTests
     {
-        [Fact]
-        public async Task SimpleAll()
+        private static readonly Encoding SafeUtf8 = new UTF8Encoding(false, true);
+
+        private static async Task TestFiles(string schemaPath, string expectedPath)
         {
+            schemaPath = Path.ChangeExtension(schemaPath, ".gen.json");
+
             // Arrange
             JsonSchemaKeywords.RegisterXsdKeywords();
             JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
 
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleAll.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleAll.xsd");
+            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData(schemaPath);
+            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData(expectedPath);
 
             // Act
             jsonSchema.Accept(visitor);
             XmlSchema actual = visitor.Schema;
 
+            StringBuilder xmlStringBuilder = new StringBuilder();
+            await using (XmlWriter xmlWriter = XmlWriter.Create(xmlStringBuilder, new XmlWriterSettings
+            {
+                Async = false,
+                CheckCharacters = true,
+                ConformanceLevel = ConformanceLevel.Document,
+                Indent = true,
+                Encoding = SafeUtf8,
+                OmitXmlDeclaration = false
+            }))
+            {
+                actual.Write(xmlWriter);
+            }
+
+            string xsd = xmlStringBuilder.ToString();
+
             // Assert
             XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+        }
+
+        [Fact]
+        public async Task SimpleAll()
+        {
+            await TestFiles("Model/JsonSchema/SimpleAll.json", "Model/XmlSchema/SimpleAll.xsd");
         }
 
         [Fact]
         public async Task AltinnAnnotation()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/AltinnAnnotation.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/AltinnAnnotation.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/AltinnAnnotation.json", "Model/XmlSchema/AltinnAnnotation.xsd");
         }
 
         [Fact]
         public async Task Any()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/Any.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/Any.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/Any.json", "Model/XmlSchema/Any.xsd");
         }
 
         [Fact]
         public async Task Attributes()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/Attributes.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/Attributes.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/Attributes.json", "Model/XmlSchema/Attributes.xsd");
         }
 
         [Fact]
         public async Task BuiltinTypes()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/BuiltinTypes.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/BuiltinTypes.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/BuiltinTypes.json", "Model/XmlSchema/BuiltinTypes.xsd");
         }
 
         [Fact]
         public async Task SimpleChoice()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleChoice.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleChoice.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleChoice.json", "Model/XmlSchema/SimpleChoice.xsd");
         }
 
         [Fact]
         public async Task NestedChoice()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
+            await TestFiles("Model/JsonSchema/NestedChoice.json", "Model/XmlSchema/NestedChoice.xsd");
+        }
 
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedChoice.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedChoice.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+        [Fact]
+        public async Task NestedArrays()
+        {
+            await TestFiles("Model/JsonSchema/NestedArrays.json", "Model/XmlSchema/NestedArrays.xsd");
         }
 
         [Fact]
         public async Task NestedWithOptionalChoice()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedWithOptionalChoice.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedWithOptionalChoice.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedWithOptionalChoice.json", "Model/XmlSchema/NestedWithOptionalChoice.xsd");
         }
 
         [Fact]
         public async Task NestedWithArrayChoice()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedWithArrayChoice.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedWithArrayChoice.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedWithArrayChoice.json", "Model/XmlSchema/NestedWithArrayChoice.xsd");
         }
 
         [Fact]
         public async Task ComplexContentExtension()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/ComplexContentExtension.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/ComplexContentExtension.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/ComplexContentExtension.json", "Model/XmlSchema/ComplexContentExtension.xsd");
         }
 
         [Fact]
         public async Task ComplexContentRestriction()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/ComplexContentRestriction.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/ComplexContentRestriction.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/ComplexContentRestriction.json", "Model/XmlSchema/ComplexContentRestriction.xsd");
         }
 
         [Fact]
         public async Task ComplexSchema()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/ComplexSchema.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/ComplexSchema.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/ComplexSchema.json", "Model/XmlSchema/ComplexSchema.xsd");
         }
 
         [Fact]
         public async Task Definitions()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/Definitions.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/Definitions.xsd");
-
-            // Act
-            jsonSchema.Accept(null, visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/Definitions.json", "Model/XmlSchema/Definitions.xsd");
         }
 
         [Fact]
         public async Task ElementAnnotation()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/ElementAnnotation.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/ElementAnnotation.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/ElementAnnotation.json", "Model/XmlSchema/ElementAnnotation.xsd");
         }
 
         [Fact]
         public async Task SimpleTypeRestrictions()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleTypeRestrictions.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleTypeRestrictions.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleTypeRestrictions.json", "Model/XmlSchema/SimpleTypeRestrictions.xsd");
         }
 
         [Fact]
         public async Task SimpleSequence()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleSequence.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleSequence.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleSequence.json", "Model/XmlSchema/SimpleSequence.xsd");
         }
 
         [Fact]
         public async Task NestedSequence()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedSequence.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedSequence.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedSequence.json", "Model/XmlSchema/NestedSequence.xsd");
         }
 
         [Fact]
         public async Task NestedSequences()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedSequences.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedSequences.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedSequences.json", "Model/XmlSchema/NestedSequences.xsd");
         }
 
         [Fact]
         public async Task NestedWithOptionalSequence()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedWithOptionalSequence.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedWithOptionalSequence.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedWithOptionalSequence.json", "Model/XmlSchema/NestedWithOptionalSequence.xsd");
         }
 
         [Fact]
         public async Task NestedWithArraySequence()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/NestedWithArraySequence.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/NestedWithArraySequence.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/NestedWithArraySequence.json", "Model/XmlSchema/NestedWithArraySequence.xsd");
         }
 
         [Fact]
         public async Task SimpleContentExtension()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleContentExtension.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleContentExtension.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleContentExtension.json", "Model/XmlSchema/SimpleContentExtension.xsd");
         }
 
         [Fact]
         public async Task SimpleContentRestriction()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleContentRestriction.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleContentRestriction.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleContentRestriction.json", "Model/XmlSchema/SimpleContentRestriction.xsd");
         }
 
         [Fact]
         public async Task SimpleTypeList()
         {
-            // Arrange
-            JsonSchemaKeywords.RegisterXsdKeywords();
-            JsonSchemaToXmlSchemaVisitor visitor = new JsonSchemaToXmlSchemaVisitor();
-
-            JsonSchema jsonSchema = await ResourceHelpers.LoadJsonSchemaTestData("Model/JsonSchema/SimpleTypeList.json");
-            XmlSchema expected = ResourceHelpers.LoadXmlSchemaTestData("Model/XmlSchema/SimpleTypeList.xsd");
-
-            // Act
-            jsonSchema.Accept(visitor);
-            XmlSchema actual = visitor.Schema;
-
-            // Assert
-            XmlSchemaAssertions.IsEquivalentTo(expected, actual);
+            await TestFiles("Model/JsonSchema/SimpleTypeList.json", "Model/XmlSchema/SimpleTypeList.xsd");
         }
     }
 }

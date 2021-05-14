@@ -1,0 +1,46 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "schema.json",
+  "type": "object",
+  "@xsdNamespaces": {
+    "xsd": "http://www.w3.org/2001/XMLSchema",
+    "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    "test": "http://test.com/altinn/unittest"
+  },
+  "@xsdSchemaAttributes": {
+    "AttributeFormDefault": "Unqualified",
+    "ElementFormDefault": "Qualified",
+    "BlockDefault": "None",
+    "FinalDefault": "None"
+  },
+  "properties": {
+    "Root": {
+      "properties": {
+        "a1": {
+          "type": "string",
+          "@xsdType": "string"
+        },
+        "a2": {
+          "type": "string",
+          "@xsdType": "string",
+          "default": "def"
+        },
+        "a3": {
+          "type": "string",
+          "@xsdType": "string",
+          "const": "fix"
+        },
+        "a4": {
+          "type": "string",
+          "@xsdType": "string"
+        }
+      },
+      "required": [
+        "a4"
+      ],
+      "@xsdUnhandledAttributes": {
+        "test:unhandled": "Unhandled attribute"
+      }
+    }
+  }
+}

@@ -2,7 +2,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Schema;
@@ -15,13 +14,19 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
     /// <summary>
     /// Visitor class for converting XML schema to Json Schema, this will produce a Json Schema with custom keywords to preserve XML schema information
     /// </summary>
-    public class XmlSchemaToJsonSchemaConverter : IXmlSchemaConverter<JsonSchemaBuilder>
+    public class XmlSchemaToJsonSchemaConverter : IXmlSchemaConverter<JsonSchema>
     {
         private const string XmlSchemaNamespace = "http://www.w3.org/2001/XMLSchema";
 
+        private XmlSchemaSet _schemaSet;
+
         /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaNode(XmlSchema schema)
+        public JsonSchema Convert(XmlSchema schema)
         {
+            _schemaSet = new XmlSchemaSet();
+            _schemaSet.Add(schema);
+            _schemaSet.Compile();
+
             JsonSchemaBuilder builder = new JsonSchemaBuilder()
                .Schema(MetaSchemas.Draft201909Id)
                .Id("schema.json")
@@ -50,22 +55,22 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
                         AddAnnotation(x, builder);
                         break;
                     case XmlSchemaSimpleType x:
-                        items.Add((x.Name, ConvertSchemaSimpleType(x)));
+                        items.Add((x.Name, ConvertSchemaSimpleType(x, false, false)));
                         break;
                     case XmlSchemaComplexType x:
-                        items.Add((x.Name, ConvertSchemaComplexType(x)));
+                        items.Add((x.Name, ConvertSchemaComplexType(x, false, false)));
                         break;
                     case XmlSchemaGroup x:
-                        items.Add((x.Name, ConvertSchemaGroup(x)));
+                        items.Add((x.Name, ConvertSchemaGroup(x, false, false)));
                         break;
                     case XmlSchemaElement x:
-                        items.Add((x.Name, ConvertSchemaElement(x)));
+                        items.Add((x.Name, ConvertSchemaElement(x, false, false)));
                         break;
                     case XmlSchemaAttribute x:
-                        items.Add((x.Name, ConvertSchemaAttribute(x)));
+                        items.Add((x.Name, ConvertSchemaAttribute(x, false, false)));
                         break;
                     case XmlSchemaAttributeGroup x:
-                        items.Add((x.Name, ConvertSchemaAttributeGroup(x)));
+                        items.Add((x.Name, ConvertSchemaAttributeGroup(x, false, false)));
                         break;
                     default:
                         throw new XmlSchemaException("Unsupported global element in xml schema", null, item.LineNumber, item.LinePosition);
@@ -175,21 +180,18 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             builder.Info(info.RootElement);
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAnnotation(XmlSchemaAnnotation item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAttribute(XmlSchemaAttribute item)
+        private JsonSchemaBuilder ConvertSchemaAttribute(XmlSchemaAttribute item, bool optional, bool array)
         {
             JsonSchemaBuilder builder = new JsonSchemaBuilder();
 
-            if (item.Annotation != null)
-            {
-                AddAnnotation(item.Annotation, builder);
-            }
+            HandleAttribute(item, optional, array, builder);
+
+            return builder;
+        }
+
+        private void HandleAttribute(XmlSchemaAttribute item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
 
             if (!item.RefName.IsEmpty)
             {
@@ -198,12 +200,12 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
             else if (!item.SchemaTypeName.IsEmpty)
             {
-                int minOccurs = item.Use == XmlSchemaUse.Optional ? 0 : 1;
-                HandleType(item.SchemaTypeName, minOccurs, 1, builder);
+                int minOccurs = (optional || item.Use == XmlSchemaUse.Optional) ? 0 : 1;
+                HandleType(item.SchemaTypeName, minOccurs, 1, array, builder);
             }
             else if (item.SchemaType != null)
             {
-                HandleSimpleType(item.SchemaType, builder);
+                HandleSimpleType(item.SchemaType, optional, array, builder);
             }
 
             if (item.DefaultValue != null)
@@ -217,58 +219,56 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
 
             AddUnhandledAttributes(item, builder);
-
-            return builder;
         }
 
-        private void HandleSimpleType(XmlSchemaSimpleType schemaType, JsonSchemaBuilder builder)
+        private void HandleSimpleType(XmlSchemaSimpleType schemaType, bool optional, bool array, JsonSchemaBuilder builder)
         {
             switch (schemaType.Content)
             {
                 case XmlSchemaSimpleTypeRestriction x:
-                    HandleSimpleTypeRestriction(x, builder);
+                    HandleSimpleTypeRestriction(x, optional, array, builder);
                     break;
                 case XmlSchemaSimpleTypeList x:
-                    HandleSimpleTypeList(x, builder);
+                    HandleSimpleTypeList(x, optional, array, builder);
                     break;
                 case XmlSchemaSimpleTypeUnion x:
                     throw new XmlSchemaException("Altinn studio does not support xsd unions", null, x.LineNumber, x.LinePosition);
             }
         }
 
-        private void HandleSimpleTypeRestriction(XmlSchemaSimpleTypeRestriction item, JsonSchemaBuilder builder)
+        private void HandleSimpleTypeRestriction(XmlSchemaSimpleTypeRestriction item, bool optional, bool array, JsonSchemaBuilder builder)
         {
-            JsonSchemaBuilder baseTypeSchema = null;
+            StepsBuilder steps = new StepsBuilder();
 
             if (item.BaseType != null)
             {
-                baseTypeSchema = ConvertSchemaSimpleType(item.BaseType);
+                steps.Add(b => HandleSimpleType(item.BaseType, optional, array, b));
             }
             else if (!item.BaseTypeName.IsEmpty)
             {
-                baseTypeSchema = new JsonSchemaBuilder();
-                HandleType(item.BaseTypeName, 1, 1, baseTypeSchema);
+                steps.Add(b => HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, b));
             }
 
-            JsonSchemaBuilder restrictionSchemaBuilder = baseTypeSchema == null ? builder : new JsonSchemaBuilder();
-
-            List<string> enumValues = new List<string>();
-            List<string> xsdRestrictions = new List<string>();
-
-            foreach (XmlSchemaFacet facet in item.Facets.Cast<XmlSchemaFacet>())
+            if (item.Facets.Count > 0)
             {
-                HandleRestrictionFacet(facet, restrictionSchemaBuilder, ref enumValues, ref xsdRestrictions);
+                steps.Add(b =>
+                {
+                    List<string> enumValues = new List<string>();
+                    List<string> xsdRestrictions = new List<string>();
+
+                    foreach (XmlSchemaFacet facet in item.Facets.Cast<XmlSchemaFacet>())
+                    {
+                        HandleRestrictionFacet(facet, b, ref enumValues, ref xsdRestrictions);
+                    }
+
+                    if (enumValues.Count > 0)
+                    {
+                        b.Enum(enumValues.Select(val => val.AsJsonElement()));
+                    }
+                });
             }
 
-            if (enumValues.Count > 0)
-            {
-                restrictionSchemaBuilder.Enum(enumValues.Select(val => val.AsJsonElement()));
-            }
-
-            if (baseTypeSchema != null)
-            {
-                builder.AllOf(baseTypeSchema, restrictionSchemaBuilder);
-            }
+            steps.BuildWithAllOf(builder);
         }
 
         private void HandleRestrictionFacet(XmlSchemaFacet facet, JsonSchemaBuilder builder, ref List<string> enumValues, ref List<string> xsdRestrictions)
@@ -361,19 +361,19 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
         }
 
-        private void HandleSimpleTypeList(XmlSchemaSimpleTypeList item, JsonSchemaBuilder builder)
+        private void HandleSimpleTypeList(XmlSchemaSimpleTypeList item, bool optional, bool array, JsonSchemaBuilder builder)
         {
             builder.Type(SchemaValueType.Array);
 
             JsonSchemaBuilder itemTypeSchema;
             if (item.ItemType != null)
             {
-                itemTypeSchema = ConvertSchemaSimpleType(item.ItemType);
+                itemTypeSchema = ConvertSchemaSimpleType(item.ItemType, optional, array);
             }
             else if (!item.ItemTypeName.IsEmpty)
             {
                 itemTypeSchema = new JsonSchemaBuilder();
-                HandleType(item.ItemTypeName, 1, 1, itemTypeSchema);
+                HandleType(item.ItemTypeName, optional ? 0 : 1, 1, false, itemTypeSchema);
             }
             else
             {
@@ -381,6 +381,420 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
 
             builder.Items(itemTypeSchema);
+        }
+
+        private void HandleComplexType(XmlSchemaComplexType item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder attributeDefinitions = new PropertiesBuilder();
+
+            if (item.ContentModel != null)
+            {
+                switch (item.ContentModel)
+                {
+                    case XmlSchemaSimpleContent x:
+                        steps.Add(b => HandleSimpleContent(x, optional, array, b));
+                        break;
+                    case XmlSchemaComplexContent x:
+                        steps.Add(b => HandleComplexContent(x, optional, array, b));
+                        break;
+                }
+            }
+            else if (item.Particle != null)
+            {
+                switch (item.Particle)
+                {
+                    case XmlSchemaGroupRef x:
+                        steps.Add(b => HandleGroupRef(x, b));
+                        break;
+                    case XmlSchemaChoice x:
+                        steps.Add(b => HandleChoice(x, optional, array, b));
+                        break;
+                    case XmlSchemaAll x:
+                        steps.Add(b => HandleAll(x, optional, array, b));
+                        break;
+                    case XmlSchemaSequence x:
+                        steps.Add(b => HandleSequence(x, optional, array, b));
+                        break;
+                }
+            }
+
+            foreach (XmlSchemaObject attribute in item.Attributes)
+            {
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        string name = x.Name ?? x.RefName.Name; 
+                        attributeDefinitions.Add(name, ConvertSchemaAttribute(x, false, false), x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        attributeDefinitions.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                    default:
+                        throw new XmlException("Expected attribute or attribute group reference", null, attribute.LineNumber, attribute.LinePosition);
+                }
+            }
+
+            attributeDefinitions.AddCurrentPropertiesToStep(steps);
+
+            if (item.AnyAttribute != null)
+            {
+                // TODO
+            }
+
+            steps.BuildWithAllOf(builder);
+        }
+
+        private void HandleGroupRef(XmlSchemaGroupRef item, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            builder.Ref(GetReferenceFromName(item.RefName.Name));
+            builder.XsdType("#ref");
+        }
+
+        private void HandleChoice(XmlSchemaChoice choice, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(choice, builder);
+
+            List<JsonSchema> choices = new List<JsonSchema>();
+
+            foreach (XmlSchemaObject item in choice.Items)
+            {
+                switch (item)
+                {
+                    case XmlSchemaElement x:
+                        string name = x.Name ?? x.RefName.Name;
+                        JsonSchemaBuilder b = new JsonSchemaBuilder();
+                        b.Properties((name, ConvertSchemaElement(x, optional, array)));
+                        if (x.MinOccurs > 0)
+                        {
+                            b.Required(name);
+                        }
+
+                        choices.Add(b);
+                        break;
+                    case XmlSchemaGroupRef x:
+                        choices.Add(ConvertSchemaGroupRef(x));
+                        break;
+                    case XmlSchemaChoice x:
+                        choices.Add(ConvertSchemaChoice(x, optional, array));
+                        break;
+                    case XmlSchemaSequence x:
+                        choices.Add(ConvertSchemaSequence(x, optional, array));
+                        break;
+                    case XmlSchemaAny:
+                        // TODO
+                        throw new NotImplementedException();
+                }
+            }
+
+            if (choices.Count > 0)
+            {
+                builder.OneOf(choices);
+            }
+        }
+
+        private void HandleAll(XmlSchemaAll all, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(all, builder);
+
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            foreach (XmlSchemaElement element in all.Items.Cast<XmlSchemaElement>())
+            {
+                string name = element.Name ?? element.RefName.Name;
+                properties.Add(name, ConvertSchemaElement(element, optional, array), !optional && element.MinOccurs > 0);
+            }
+
+            properties.Build(builder);
+        }
+
+        private void HandleSequence(XmlSchemaSequence sequence, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            optional = optional || sequence.MinOccurs == 0;
+            array = array || sequence.MaxOccurs > 1;
+
+            HandleAnnotation(sequence, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            foreach (XmlSchemaObject item in sequence.Items)
+            {
+                switch (item)
+                {
+                    case XmlSchemaElement x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaElement(x, optional, array), !optional && x.MinOccurs > 0);
+                        break;
+                    case XmlSchemaGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleGroupRef(x, b));
+                        break;
+                    case XmlSchemaChoice x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleChoice(x, optional, array, b));
+                        break;
+                    case XmlSchemaSequence x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleSequence(x, optional, array, b));
+                        break;
+                    case XmlSchemaAny:
+                        steps.Add(b => b.XsdType("#any"));
+                        break;
+                }
+            }
+
+            properties.AddCurrentPropertiesToStep(steps);
+
+            steps.BuildWithAllOf(builder);
+        }
+
+        private void HandleSimpleContent(XmlSchemaSimpleContent item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            switch (item.Content)
+            {
+                case XmlSchemaSimpleContentRestriction x:
+                    HandleSimpleContentRestriction(x, optional, array, builder);
+                    break;
+                case XmlSchemaSimpleContentExtension x:
+                    HandleSimpleContentExtension(x, optional, array, builder);
+                    break;
+            }
+        }
+
+        private void AddRestrictionFacets(ICollection<XmlSchemaFacet> facets, JsonSchemaBuilder builder)
+        {
+            if (facets.Count > 0)
+            {
+                List<string> enumValues = new List<string>();
+                List<string> xsdRestrictions = new List<string>();
+
+                foreach (XmlSchemaFacet facet in facets)
+                {
+                    HandleRestrictionFacet(facet, builder, ref enumValues, ref xsdRestrictions);
+                }
+
+                if (enumValues.Count > 0)
+                {
+                    builder.Enum(enumValues.Select(val => val.AsJsonElement()));
+                }
+            }
+        }
+
+        private void HandleSimpleContentRestriction(XmlSchemaSimpleContentRestriction item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            if (!item.BaseTypeName.IsEmpty)
+            {
+                JsonSchemaBuilder valueSchemaBuilder = new JsonSchemaBuilder();
+                if (item.BaseTypeName.Namespace == XmlSchemaNamespace)
+                {
+                    HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, valueSchemaBuilder);
+                }
+                else
+                {
+                    XmlQualifiedName typeName = item.BaseTypeName;
+                    XmlSchemaObject type = _schemaSet.GlobalTypes[typeName];
+
+                    if (type is XmlSchemaSimpleType)
+                    {
+                        HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, valueSchemaBuilder);
+                    }
+                    else if (type is XmlSchemaComplexType)
+                    {
+                        steps.Add(b => HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, b));
+                    }
+                }
+
+                AddRestrictionFacets(item.Facets.Cast<XmlSchemaFacet>().ToList(), valueSchemaBuilder);
+                properties.Add("value", valueSchemaBuilder, false);
+            }
+            else if (item.BaseType != null)
+            {
+                JsonSchemaBuilder valueSchemaBuilder = new JsonSchemaBuilder();
+                HandleSimpleType(item.BaseType, optional, array, valueSchemaBuilder);
+                AddRestrictionFacets(item.Facets.Cast<XmlSchemaFacet>().ToList(), valueSchemaBuilder);
+                properties.Add("value", valueSchemaBuilder, false);
+            }
+
+            foreach (XmlSchemaObject attribute in item.Attributes)
+            {
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaAttribute(x, optional, array), !optional && x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                }
+            }
+
+            properties.AddCurrentPropertiesToStep(steps);
+            steps.BuildWithAllOf(builder);
+
+            if (item.AnyAttribute != null)
+            {
+                builder.XsdAnyAttribute();
+            }
+        }
+
+        private void HandleSimpleContentExtension(XmlSchemaSimpleContentExtension item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            JsonSchemaBuilder valueSchema = new JsonSchemaBuilder();
+            HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, valueSchema);
+            properties.Add("value", valueSchema, false);
+
+            foreach (XmlSchemaObject attribute in item.Attributes)
+            {
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaAttribute(x, optional, array), !optional && x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                }
+            }
+
+            properties.AddCurrentPropertiesToStep(steps);
+            steps.BuildWithAllOf(builder);
+
+            if (item.AnyAttribute != null)
+            {
+                builder.XsdAnyAttribute();
+            }
+        }
+
+        private void HandleComplexContent(XmlSchemaComplexContent item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            switch (item.Content)
+            {
+                case XmlSchemaComplexContentRestriction x:
+                    HandleComplexContentRestriction(x, optional, array, builder);
+                    break;
+                case XmlSchemaComplexContentExtension x:
+                    HandleComplexContentExtension(x, optional, array, builder);
+                    break;
+            }
+        }
+
+        private void HandleComplexContentRestriction(XmlSchemaComplexContentRestriction item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            steps.Add(b => HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, b));
+
+            switch (item.Particle)
+            {
+                case XmlSchemaGroupRef x:
+                    steps.Add(b => HandleGroupRef(x, b));
+                    break;
+                case XmlSchemaChoice x:
+                    steps.Add(b => HandleChoice(x, optional, array, b));
+                    break;
+                case XmlSchemaAll x:
+                    steps.Add(b => HandleAll(x, optional, array, b));
+                    break;
+                case XmlSchemaSequence x:
+                    steps.Add(b => HandleSequence(x, false, false, b));
+                    break;
+            }
+
+            foreach (XmlSchemaObject attribute in item.Attributes)
+            {
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaAttribute(x, optional, array), !optional && x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                }
+            }
+
+            properties.AddCurrentPropertiesToStep(steps);
+
+            if (item.AnyAttribute != null)
+            {
+                builder.XsdAnyAttribute();
+            }
+
+            steps.BuildWithAllOf(builder);
+        }
+
+        private void HandleComplexContentExtension(XmlSchemaComplexContentExtension item, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            steps.Add(b => HandleType(item.BaseTypeName, optional ? 0 : 1, 1, array, b));
+
+            switch (item.Particle)
+            {
+                case XmlSchemaGroupRef x:
+                    steps.Add(b => HandleGroupRef(x, b));
+                    break;
+                case XmlSchemaChoice x:
+                    steps.Add(b => HandleChoice(x, optional, array, b));
+                    break;
+                case XmlSchemaAll x:
+                    steps.Add(b => HandleAll(x, optional, array, b));
+                    break;
+                case XmlSchemaSequence x:
+                    steps.Add(b => HandleSequence(x, false, false, b));
+                    break;
+            }
+
+            foreach (XmlSchemaObject attribute in item.Attributes)
+            {
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaAttribute(x, optional, array), !optional && x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                }
+            }
+
+            properties.AddCurrentPropertiesToStep(steps);
+
+            if (item.AnyAttribute != null)
+            {
+                builder.XsdAnyAttribute();
+            }
+
+            steps.BuildWithAllOf(builder);
         }
 
         private void AddUnhandledAttributes(XmlSchemaAnnotated item, JsonSchemaBuilder builder)
@@ -392,34 +806,76 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAttributeGroup(XmlSchemaAttributeGroup item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAttributeGroupRef(XmlSchemaAttributeGroupRef item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaElement(XmlSchemaElement item)
+        private JsonSchemaBuilder ConvertSchemaAttributeGroup(XmlSchemaAttributeGroup item, bool optional, bool array)
         {
             JsonSchemaBuilder builder = new JsonSchemaBuilder();
 
-            if (item.Annotation != null)
+            HandleAttributeGroup(item, optional, array, builder);
+
+            return builder;
+        }
+
+        private void HandleAttributeGroup(XmlSchemaAttributeGroup attributes, bool optional, bool array, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(attributes, builder);
+
+            StepsBuilder steps = new StepsBuilder();
+            PropertiesBuilder properties = new PropertiesBuilder();
+
+            foreach (XmlSchemaObject attribute in attributes.Attributes)
             {
-                AddAnnotation(item.Annotation, builder);
+                switch (attribute)
+                {
+                    case XmlSchemaAttribute x:
+                        properties.Add(x.Name ?? x.RefName.Name, ConvertSchemaAttribute(x, optional, array), !optional && x.Use == XmlSchemaUse.Required);
+                        break;
+                    case XmlSchemaAttributeGroupRef x:
+                        properties.AddCurrentPropertiesToStep(steps);
+                        steps.Add(b => HandleAttributeGroupRef(x, b));
+                        break;
+                }
             }
 
-            switch (item.SchemaType)
+            properties.AddCurrentPropertiesToStep(steps);
+            steps.BuildWithAllOf(builder);
+
+            AddUnhandledAttributes(attributes, builder);
+        }
+
+        private void HandleAttributeGroupRef(XmlSchemaAttributeGroupRef item, JsonSchemaBuilder builder)
+        {
+            HandleAnnotation(item, builder);
+
+            builder.Ref(GetReferenceFromTypename(item.RefName));
+            builder.XsdType("#ref");
+        }
+
+        private JsonSchemaBuilder ConvertSchemaElement(XmlSchemaElement item, bool optional, bool array)
+        {
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleAnnotation(item, builder);
+
+            if (!item.RefName.IsEmpty)
             {
-                case XmlSchemaSimpleType x:
-                    break;
-                case XmlSchemaComplexType x:
-                    break;
+                builder.Ref(GetReferenceFromTypename(item.RefName));
+                builder.XsdType("#ref");
+            }
+            else if (!item.SchemaTypeName.IsEmpty)
+            {
+                HandleType(item.SchemaTypeName, optional ? 0 : item.MinOccurs, item.MaxOccurs, array, builder);
+            }
+            else
+            {
+                switch (item.SchemaType)
+                {
+                    case XmlSchemaSimpleType x:
+                        HandleSimpleType(x, optional, array, builder);
+                        break;
+                    case XmlSchemaComplexType x:
+                        HandleComplexType(x, optional, array, builder);
+                        break;
+                }
             }
 
             AddUnhandledAttributes(item, builder);
@@ -427,112 +883,84 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaChoice(XmlSchemaChoice item)
+        private JsonSchemaBuilder ConvertSchemaChoice(XmlSchemaChoice item, bool optional, bool array)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleChoice(item, optional, array, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAll(XmlSchemaAll item)
+        private JsonSchemaBuilder ConvertSchemaSequence(XmlSchemaSequence item, bool optional, bool array)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleSequence(item, optional, array, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSequence(XmlSchemaSequence item)
+        private JsonSchemaBuilder ConvertSchemaGroup(XmlSchemaGroup item, bool optional, bool array)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleGroup(item, optional, array, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaGroup(XmlSchemaGroup item)
+        private void HandleGroup(XmlSchemaGroup grp, bool optional, bool array, JsonSchemaBuilder builder)
         {
-            throw new NotImplementedException();
+            HandleAnnotation(grp, builder);
+
+            switch (grp.Particle)
+            {
+                case XmlSchemaChoice x:
+                    HandleChoice(x, optional, array, builder);
+                    break;
+                case XmlSchemaAll x:
+                    HandleAll(x, optional, array, builder);
+                    break;
+                case XmlSchemaSequence x:
+                    HandleSequence(x, optional, array, builder);
+                    break;
+            }
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaGroupRef(XmlSchemaGroupRef item)
+        private JsonSchemaBuilder ConvertSchemaGroupRef(XmlSchemaGroupRef item)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleGroupRef(item, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleType(XmlSchemaSimpleType item)
+        private JsonSchemaBuilder ConvertSchemaSimpleType(XmlSchemaSimpleType item, bool optional, bool array)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleSimpleType(item, optional, array, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleTypeList(XmlSchemaSimpleTypeList item)
+        private JsonSchemaBuilder ConvertSchemaComplexType(XmlSchemaComplexType item, bool optional, bool array)
         {
-            throw new NotImplementedException();
+            JsonSchemaBuilder builder = new JsonSchemaBuilder();
+
+            HandleComplexType(item, optional, array, builder);
+
+            return builder;
         }
 
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleTypeRestriction(XmlSchemaSimpleTypeRestriction item)
+        private void HandleAnnotation(XmlSchemaAnnotated item, JsonSchemaBuilder builder)
         {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleTypeUnion(XmlSchemaSimpleTypeUnion item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaComplexType(XmlSchemaComplexType item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleContent(XmlSchemaSimpleContent item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaComplexContent(XmlSchemaComplexContent item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleContentExtension(XmlSchemaSimpleContentExtension item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaSimpleContentRestriction(XmlSchemaSimpleContentRestriction item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaComplexContentExtension(XmlSchemaComplexContentExtension item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaComplexContentRestriction(XmlSchemaComplexContentRestriction item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAny(XmlSchemaAny item)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <inheritdoc />
-        public JsonSchemaBuilder ConvertSchemaAnyAttribute(XmlSchemaAnyAttribute item)
-        {
-            throw new NotImplementedException();
+            if (item.Annotation != null)
+            {
+                AddAnnotation(item.Annotation, builder);
+            }
         }
 
         private static string GetReferenceFromTypename(XmlQualifiedName typeName)
@@ -555,22 +983,15 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             return $"#/definitions/{name}";
         }
 
-        private void HandleType(XmlQualifiedName typeName, decimal minOccurs, decimal maxOccurs, JsonSchemaBuilder builder)
+        private void HandleType(XmlQualifiedName typeName, decimal minOccurs, decimal maxOccurs, bool array, JsonSchemaBuilder builder)
         {
-            //if (ArrayScope && maxOccurs <= 1)
-            //{
-            //    maxOccurs = decimal.MaxValue;
-            //    if (OptionalScope)
-            //    {
-            //        minOccurs = 0;
-            //    }
-            //}
+            array = array || maxOccurs > 1;
 
             JsonSchemaBuilder typeBuilder = builder;
 
             if (GetTypeAndFormat(typeName, out SchemaValueType? type, out Format format, out string xsdType))
             {
-                if (maxOccurs > 1)
+                if (array)
                 {
                     typeBuilder = new JsonSchemaBuilder();
                 }
@@ -589,14 +1010,14 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
                     typeBuilder.Format(format);
                 }
 
-                if (maxOccurs > 1)
+                if (array)
                 {
                     if (minOccurs > 0)
                     {
                         typeBuilder.MinItems((uint)minOccurs);
                     }
 
-                    if (maxOccurs < decimal.MaxValue)
+                    if (maxOccurs > 1 && maxOccurs < decimal.MaxValue)
                     {
                         typeBuilder.MaxItems((uint)maxOccurs);
                     }
@@ -716,6 +1137,78 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             format = null;
             xsdType = null;
             return true;
+        }
+
+        private class PropertiesBuilder
+        {
+            private readonly List<(string name, JsonSchema schema, bool required)> _properties = new List<(string name, JsonSchema schema, bool required)>();
+
+            public void Add(string name, JsonSchema schema, bool required)
+            {
+                _properties.Add((name, schema, required));
+            }
+
+            public void AddCurrentPropertiesToStep(StepsBuilder steps)
+            {
+                if (_properties.Count > 0)
+                {
+                    (string name, JsonSchema schema)[] currentProperties = _properties.Select(prop => (prop.name, prop.schema)).ToArray();
+                    string[] required = _properties.Where(prop => prop.required).Select(prop => prop.name).ToArray();
+                    steps.Add(b =>
+                    {
+                        b.Properties(currentProperties);
+                        if (required.Length > 0)
+                        {
+                            b.Required(required);
+                        }
+                    });
+                    _properties.Clear();
+                }
+            }
+
+            public void Build(JsonSchemaBuilder builder)
+            {
+                if (_properties.Count > 0)
+                {
+                    (string name, JsonSchema schema)[] properties = _properties.Select(prop => (prop.name, prop.schema)).ToArray();
+                    string[] required = _properties.Where(prop => prop.required).Select(prop => prop.name).ToArray();
+
+                    builder.Properties(properties);
+                    if (required.Length > 0)
+                    {
+                        builder.Required(required);
+                    }
+
+                    _properties.Clear();
+                }
+            }
+        }
+
+        private class StepsBuilder
+        {
+            private readonly List<Action<JsonSchemaBuilder>> _steps = new List<Action<JsonSchemaBuilder>>();
+
+            public void Add(Action<JsonSchemaBuilder> step)
+            {
+                _steps.Add(step);
+            }
+
+            public void BuildWithAllOf(JsonSchemaBuilder builder)
+            {
+                if (_steps.Count == 1)
+                {
+                    _steps[0](builder);
+                }
+                else if (_steps.Count > 1)
+                {
+                    builder.AllOf(_steps.Select(step =>
+                    {
+                        JsonSchemaBuilder stepBuilder = new JsonSchemaBuilder();
+                        step(stepBuilder);
+                        return stepBuilder.Build();
+                    }));
+                }
+            }
         }
     }
 }

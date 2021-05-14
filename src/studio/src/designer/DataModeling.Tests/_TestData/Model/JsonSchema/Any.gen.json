@@ -1,0 +1,40 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "schema.json",
+  "type": "object",
+  "@xsdNamespaces": {
+    "xsd": "http://www.w3.org/2001/XMLSchema",
+    "xsi": "http://www.w3.org/2001/XMLSchema-instance"
+  },
+  "@xsdSchemaAttributes": {
+    "AttributeFormDefault": "Unqualified",
+    "ElementFormDefault": "Qualified",
+    "BlockDefault": "None",
+    "FinalDefault": "None"
+  },
+  "properties": {
+    "Root": {
+      "$ref": "#/definitions/t1"
+    }
+  },
+  "definitions": {
+    "t1": {
+      "allOf": [
+        {
+          "@xsdType": "#any"
+        },
+        {
+          "properties": {
+            "e1": {
+              "type": "string",
+              "@xsdType": "string"
+            }
+          },
+          "required": [
+            "e1"
+          ]
+        }
+      ]
+    }
+  }
+}
