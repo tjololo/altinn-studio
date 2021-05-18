@@ -28,7 +28,7 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             _schemaSet.Compile();
 
             JsonSchemaBuilder builder = new JsonSchemaBuilder()
-               .Schema(MetaSchemas.Draft201909Id)
+               .Schema(MetaSchemas.Draft202012Id)
                .Id("schema.json")
                .Type(SchemaValueType.Object)
                .XsdNamespaces(
@@ -98,33 +98,49 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
                 return;
             }
 
-            XmlSchemaAppInfo appInfo = annotation.Items.Cast<XmlSchemaObject>().FirstOrDefault(o => o is XmlSchemaAppInfo) as XmlSchemaAppInfo;
-            XmlSchemaDocumentation doc = annotation.Items.Cast<XmlSchemaObject>().FirstOrDefault(o => o is XmlSchemaDocumentation) as XmlSchemaDocumentation;
+            IEnumerable<XmlSchemaAppInfo> appInfos = annotation.Items.Cast<XmlSchemaObject>().Where(o => o is XmlSchemaAppInfo).Cast<XmlSchemaAppInfo>();
+            IEnumerable<XmlSchemaDocumentation> docs = annotation.Items.Cast<XmlSchemaObject>().Where(o => o is XmlSchemaDocumentation).Cast<XmlSchemaDocumentation>();
 
-            if (appInfo?.Markup != null && appInfo.Markup.Length > 0)
+            XmlDocument appInfoDoc = new XmlDocument();
+            XmlElement appInfoRoot = appInfoDoc.CreateElement("root");
+            appInfoDoc.AppendChild(appInfoRoot);
+
+            foreach (XmlSchemaAppInfo appInfo in appInfos)
             {
-                XmlDocument xml = new XmlDocument();
-                XmlElement root = xml.CreateElement("root");
-                xml.AppendChild(root);
-                foreach (XmlNode node in appInfo.Markup)
+                if (appInfo.Markup != null && appInfo.Markup.Length > 0)
                 {
-                    root.AppendChild(xml.ImportNode(node!, true));
+                    XmlElement appInfoElement = appInfoDoc.CreateElement("appInfo");
+                    foreach (XmlNode node in appInfo.Markup)
+                    {
+                        appInfoElement.AppendChild(appInfoDoc.ImportNode(node!, true));
+                    }
                 }
-
-                builder.Comment(root.InnerXml);
             }
 
-            if (doc?.Markup != null && doc.Markup.Length > 0)
+            if (appInfoRoot.HasChildNodes)
             {
-                XmlDocument xml = new XmlDocument();
-                XmlElement root = xml.CreateElement("root");
-                xml.AppendChild(root);
-                foreach (XmlNode node in doc.Markup)
-                {
-                    root.AppendChild(xml.ImportNode(node!, true));
-                }
+                builder.Comment(appInfoRoot.InnerXml);
+            }
 
-                builder.Description(root.InnerXml);
+            XmlDocument documentationDoc = new XmlDocument();
+            XmlElement documentationRoot = documentationDoc.CreateElement("root");
+            documentationDoc.AppendChild(documentationRoot);
+
+            foreach (XmlSchemaDocumentation doc in docs)
+            {
+                if (doc.Markup != null && doc.Markup.Length > 0)
+                {
+                    XmlElement documentationElement = documentationDoc.CreateElement("documentation");
+                    foreach (XmlNode node in doc.Markup)
+                    {
+                        documentationElement.AppendChild(documentationDoc.ImportNode(node!, true));
+                    }
+                }
+            }
+
+            if (documentationRoot.HasChildNodes)
+            {
+                builder.Description(documentationRoot.InnerXml);
             }
         }
 
