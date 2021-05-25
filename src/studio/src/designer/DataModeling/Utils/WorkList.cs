@@ -62,6 +62,27 @@ namespace Altinn.Studio.DataModeling.Utils
         }
 
         /// <summary>
+        /// Get the first work item of type <typeparamref name="TT"/> and mark it as handled.
+        /// </summary>
+        /// <typeparam name="TT">The type of work item to pull</typeparam>
+        /// <param name="result">The work item or default/null if no unhandled work items of the given type was found in the list</param>
+        /// <returns><code>true</code> if an unhandled work item was found, <code>false</code> if not</returns>
+        public bool TryPull<TT>(out TT result)
+            where TT : T
+        {
+            WorkItem item = _list.SingleOrDefault(x => x.Value is TT);
+            if (item == null || item.Handled)
+            {
+                result = default;
+                return false;
+            }
+
+            item.MarkAsHandled();
+            result = (TT)item.Value;
+            return true;
+        }
+
+        /// <summary>
         /// Get an enumerable of all the items left in the work list that have not been marked as handled.
         /// </summary>
         /// <returns>Enumerable of all unhandled work items</returns>

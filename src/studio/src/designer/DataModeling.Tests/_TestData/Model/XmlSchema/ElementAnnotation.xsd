@@ -14,7 +14,7 @@
                 <p>Documentation</p>
               </brreg:tekst>
             </xsd:documentation>
-            <xs:documentation>
+            <xsd:documentation>
               <brreg:tekst brreg:lang="NOB" brreg:teksttype="HJELP" xmlns:brreg="http://www.brreg.no/or">
                 <p>Alle beløp skal oppgis i hele kroner.  </p>
                 <p/>
@@ -46,13 +46,13 @@
                 <p>Plikt  </p>
                 <p>Plikten til å sende inn omsetningsoppgave og betale avgift går fram av  merverdiavgiftsloven.</p>
               </brreg:tekst>
-            </xs:documentation>
+            </xsd:documentation>
             <xsd:appinfo>
               <brreg:tekst brreg:lang="NOB" brreg:teksttype="LEDE" xmlns:brreg="http://www.brreg.no/or">
                 <p>Documentation</p>
               </brreg:tekst>
             </xsd:appinfo>
-            <xs:appinfo>
+            <xsd:appinfo>
               <brreg:tekst brreg:lang="NOB" brreg:teksttype="HJELP" xmlns:brreg="http://www.brreg.no/or">
                 <p>Alle beløp skal oppgis i hele kroner.  </p>
                 <p/>
@@ -84,7 +84,7 @@
                 <p>Plikt  </p>
                 <p>Plikten til å sende inn omsetningsoppgave og betale avgift går fram av  merverdiavgiftsloven.</p>
               </brreg:tekst>
-            </xs:appinfo>
+            </xsd:appinfo>
           </xsd:annotation>
         </xsd:element>
       </xsd:sequence>
