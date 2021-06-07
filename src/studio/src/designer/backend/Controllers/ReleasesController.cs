@@ -13,7 +13,7 @@ namespace Altinn.Studio.Designer.Controllers
     /// Controller for creating, getting and updating releases
     /// </summary>
     [ApiController]
-    [Route("/designer/api/v1/{org}/{app}/[controller]")]
+    [Route("/designer/api/v1/{org}/{repo}/[controller]")]
     [AutoValidateAntiforgeryToken]
     public class ReleasesController : ControllerBase
     {
@@ -35,7 +35,7 @@ namespace Altinn.Studio.Designer.Controllers
         /// <returns>SearchResults of type ReleaseEntity</returns>
         [HttpGet]
         [ApiConventionMethod(typeof(DefaultApiConventions), nameof(DefaultApiConventions.Get))]
-        public async Task<SearchResults<ReleaseEntity>> Get([FromQuery]DocumentQueryModel query)
+        public async Task<SearchResults<ReleaseEntity>> Get([FromQuery] DocumentQueryModel query)
             => await _releaseService.GetAsync(query);
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Altinn.Studio.Designer.Controllers
         [HttpPost]
         [Authorize(Policy = AltinnPolicy.MustHaveGiteaPushPermission)]
         [ApiConventionMethod(typeof(DefaultApiConventions), nameof(DefaultApiConventions.Post))]
-        public async Task<ActionResult<ReleaseEntity>> Create([FromBody]CreateReleaseRequestViewModel createRelease)
+        public async Task<ActionResult<ReleaseEntity>> Create([FromBody] CreateReleaseRequestViewModel createRelease)
         {
             if (!ModelState.IsValid)
             {

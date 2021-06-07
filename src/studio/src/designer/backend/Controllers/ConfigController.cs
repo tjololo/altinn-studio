@@ -46,23 +46,23 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// View for basic app configuration
+        /// View for basic repo configuration
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The View for JSON editor</returns>
-        public IActionResult Index(string org, string app)
+        public IActionResult Index(string org, string repo)
         {
             return View();
         }
 
         /// <summary>
-        /// The View for configuration of security for an app
+        /// The View for configuration of security for an repo
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The view with JSON editor</returns>
-        public IActionResult Security(string org, string app)
+        public IActionResult Security(string org, string repo)
         {
             return View();
         }
@@ -71,14 +71,14 @@ namespace Altinn.Studio.Designer.Controllers
         /// Common method to update the local config
         /// </summary>
         /// <param name="jsonData">The JSON Data</param>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="id">The name of the config</param>
         /// <returns>A View with update status</returns>
         [HttpPost]
-        public IActionResult SaveConfig([FromBody]dynamic jsonData, string org, string app, string id)
+        public IActionResult SaveConfig([FromBody] dynamic jsonData, string org, string repo, string id)
         {
-            _repository.SaveConfiguration(org, app, id + ".json", jsonData.ToString());
+            _repository.SaveConfiguration(org, repo, id + ".json", jsonData.ToString());
             return Json(new
             {
                 Success = true,
@@ -101,14 +101,14 @@ namespace Altinn.Studio.Designer.Controllers
         /// <summary>
         /// Returns the JSON configuration
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="id">The name on config</param>
         /// <returns>The JSON config</returns>
         [HttpGet]
-        public IActionResult GetConfig(string org, string app, string id)
+        public IActionResult GetConfig(string org, string repo, string id)
         {
-            string configJson = _repository.GetConfiguration(org, app, id + ".json");
+            string configJson = _repository.GetConfiguration(org, repo, id + ".json");
             if (string.IsNullOrWhiteSpace(configJson))
             {
                 configJson = "{}";
@@ -120,15 +120,15 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// Method to retrieve the app description from the metadata file
+        /// Method to retrieve the repo description from the metadata file
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The service configuration</returns>
         [HttpGet]
-        public ServiceConfiguration GetServiceConfig(string org, string app)
+        public ServiceConfiguration GetServiceConfig(string org, string repo)
         {
-            string serviceConfigPath = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.ServiceConfigFileName;
+            string serviceConfigPath = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.ServiceConfigFileName;
             ServiceConfiguration serviceConfigurationObject = null;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             if (System.IO.File.Exists(serviceConfigPath))
@@ -143,15 +143,15 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// Method to set the app description in the metadata file
+        /// Method to set the repo description in the metadata file
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="serviceConfig">the service config</param>
         [HttpPost]
-        public void SetServiceConfig(string org, string app, [FromBody] dynamic serviceConfig)
+        public void SetServiceConfig(string org, string repo, [FromBody] dynamic serviceConfig)
         {
-            string serviceConfigPath = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.ServiceConfigFileName;
+            string serviceConfigPath = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.ServiceConfigFileName;
             ServiceConfiguration serviceConfigurationObject = null;
 
             if (System.IO.File.Exists(serviceConfigPath))
@@ -167,7 +167,7 @@ namespace Altinn.Studio.Designer.Controllers
                 new FileInfo(serviceConfigPath).Directory.Create();
                 serviceConfigurationObject = new ServiceConfiguration()
                 {
-                    RepositoryName = app,
+                    RepositoryName = repo,
                     ServiceDescription = serviceConfig.serviceDescription.ToString(),
                     ServiceId = serviceConfig.serviceId.ToString(),
                     ServiceName = serviceConfig.serviceName.ToString()
@@ -175,7 +175,7 @@ namespace Altinn.Studio.Designer.Controllers
             }
 
             System.IO.File.WriteAllText(serviceConfigPath, JObject.FromObject(serviceConfigurationObject).ToString(), Encoding.UTF8);
-            _repository.UpdateServiceInformationInApplication(org, app, serviceConfigurationObject);
+            _repository.UpdateServiceInformationInApplication(org, repo, serviceConfigurationObject);
         }
     }
 }

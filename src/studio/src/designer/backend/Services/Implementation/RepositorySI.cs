@@ -93,10 +93,10 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 ? Environment.GetEnvironmentVariable("ServiceRepositorySettings__RepositoryLocation") + serviceMetadata.Org.AsFileName()
                 : _settings.GetOrgPath(serviceMetadata.Org.AsFileName(), developerUserName);
 
-            string appPath = orgPath + "/" + serviceMetadata.RepositoryName.AsFileName();
+            string repoPath = orgPath + "/" + serviceMetadata.RepositoryName.AsFileName();
 
             Directory.CreateDirectory(orgPath);
-            Directory.CreateDirectory(appPath);
+            Directory.CreateDirectory(repoPath);
 
             // Creates all the files
             CopyFolderToApp(serviceMetadata.Org, serviceMetadata.RepositoryName, _generalSettings.DeploymentLocation, _settings.GetDeploymentFolderName());
@@ -115,21 +115,21 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Creates the application metadata file
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation., e.g. "app-name-with-spaces".</param>
+        /// <param name="repo">Application identifier which is unique within an organisation., e.g. "app-name-with-spaces".</param>
         /// <param name="appTitle">The application title in default language (nb), e.g. "App name with spaces"</param>
-        public void CreateApplicationMetadata(string org, string app, string appTitle)
+        public void CreateApplicationMetadata(string org, string repo, string appTitle)
         {
             string developer = AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext);
             PlatformStorageModels.Application appMetadata = new PlatformStorageModels.Application
             {
-                Id = ApplicationHelper.GetFormattedApplicationId(org, app),
+                Id = ApplicationHelper.GetFormattedApplicationId(org, repo),
                 VersionId = null,
                 Org = org,
                 Created = DateTime.UtcNow,
                 CreatedBy = developer,
                 LastChanged = DateTime.UtcNow,
                 LastChangedBy = developer,
-                Title = new Dictionary<string, string> { { "nb", appTitle ?? app } },
+                Title = new Dictionary<string, string> { { "nb", appTitle ?? repo } },
                 DataTypes = new List<PlatformStorageModels.DataType>
                 {
                     new PlatformStorageModels.DataType
@@ -142,19 +142,19 @@ namespace Altinn.Studio.Designer.Services.Implementation
             };
 
             string metadata = JsonConvert.SerializeObject(appMetadata, Newtonsoft.Json.Formatting.Indented);
-            string filePath = _settings.GetAppMetadataFilePath(org, app, developer);
+            string filePath = _settings.GetAppMetadataFilePath(org, repo, developer);
 
             // This creates metadata
             File.WriteAllText(filePath, metadata, Encoding.UTF8);
         }
 
         /// <inheritdoc/>
-        public bool UpdateApplication(string org, string app, PlatformStorageModels.Application applicationMetadata)
+        public bool UpdateApplication(string org, string repo, PlatformStorageModels.Application applicationMetadata)
         {
             try
             {
                 string applicationMetadataAsJson = JsonConvert.SerializeObject(applicationMetadata, Newtonsoft.Json.Formatting.Indented);
-                string filePath = _settings.GetAppMetadataFilePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string filePath = _settings.GetAppMetadataFilePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                 File.WriteAllText(filePath, applicationMetadataAsJson, Encoding.UTF8);
                 return true;
             }
@@ -166,12 +166,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool UpdateModelMetadata(string org, string app, ModelMetadata modelMetadata, string modelName)
+        public bool UpdateModelMetadata(string org, string repo, ModelMetadata modelMetadata, string modelName)
         {
             try
             {
                 string metadataAsJson = JsonConvert.SerializeObject(modelMetadata);
-                string modelsFolderPath = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string modelsFolderPath = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                 string filePath = modelsFolderPath + $"{modelName}.metadata.json";
 
                 Directory.CreateDirectory(modelsFolderPath);
@@ -187,17 +187,17 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool AddMetadataForAttachment(string org, string app, string applicationMetadata)
+        public bool AddMetadataForAttachment(string org, string repo, string applicationMetadata)
         {
             try
             {
                 PlatformStorageModels.DataType formMetadata = JsonConvert.DeserializeObject<PlatformStorageModels.DataType>(applicationMetadata);
                 formMetadata.TaskId = "Task_1";
-                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, app);
+                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, repo);
                 existingApplicationMetadata.DataTypes.Add(formMetadata);
 
                 string metadataAsJson = JsonConvert.SerializeObject(existingApplicationMetadata, Newtonsoft.Json.Formatting.Indented);
-                string filePath = _settings.GetAppMetadataFilePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string filePath = _settings.GetAppMetadataFilePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
 
                 File.WriteAllText(filePath, metadataAsJson, Encoding.UTF8);
             }
@@ -210,13 +210,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool UpdateMetadataForAttachment(string org, string app, string applicationMetadata)
+        public bool UpdateMetadataForAttachment(string org, string repo, string applicationMetadata)
         {
             try
             {
                 dynamic attachmentMetadata = JsonConvert.DeserializeObject(applicationMetadata);
                 string attachmentId = attachmentMetadata.GetValue("id").Value;
-                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, app);
+                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, repo);
                 PlatformStorageModels.DataType applicationForm = existingApplicationMetadata.DataTypes.FirstOrDefault(m => m.Id == attachmentId) ?? new PlatformStorageModels.DataType();
                 applicationForm.AllowedContentTypes = new List<string>();
 
@@ -236,9 +236,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 applicationForm.MinCount = Convert.ToInt32(attachmentMetadata.GetValue("minCount").Value);
                 applicationForm.MaxSize = Convert.ToInt32(attachmentMetadata.GetValue("maxSize").Value);
 
-                DeleteMetadataForAttachment(org, app, attachmentId);
+                DeleteMetadataForAttachment(org, repo, attachmentId);
                 string metadataAsJson = JsonConvert.SerializeObject(applicationForm);
-                AddMetadataForAttachment(org, app, metadataAsJson);
+                AddMetadataForAttachment(org, repo, metadataAsJson);
             }
             catch (Exception)
             {
@@ -249,11 +249,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool DeleteMetadataForAttachment(string org, string app, string id)
+        public bool DeleteMetadataForAttachment(string org, string repo, string id)
         {
             try
             {
-                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, app);
+                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, repo);
 
                 if (existingApplicationMetadata.DataTypes != null)
                 {
@@ -262,7 +262,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 }
 
                 string metadataAsJson = JsonConvert.SerializeObject(existingApplicationMetadata, Newtonsoft.Json.Formatting.Indented);
-                string filePath = _settings.GetAppMetadataFilePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string filePath = _settings.GetAppMetadataFilePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
 
                 File.WriteAllText(filePath, metadataAsJson, Encoding.UTF8);
             }
@@ -278,13 +278,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the <see cref="ModelMetadata"/> for an app.
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The model metadata for an app.</returns>
-        public ModelMetadata GetModelMetadata(string org, string app)
+        public ModelMetadata GetModelMetadata(string org, string repo)
         {
-            string modelName = GetModelName(org, app);
+            string modelName = GetModelName(org, repo);
 
-            string filename = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.metadata.json";
+            string filename = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.metadata.json";
 
             if (File.Exists(filename))
             {
@@ -296,10 +296,10 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public PlatformStorageModels.Application GetApplication(string org, string app)
+        public PlatformStorageModels.Application GetApplication(string org, string repo)
         {
             string filedata = string.Empty;
-            string filename = _settings.GetAppMetadataFilePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filename = _settings.GetAppMetadataFilePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             try
             {
                 if (File.Exists(filename))
@@ -322,12 +322,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the content of a configuration file
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="name">The name of the configuration</param>
         /// <returns>A string containing the file content</returns>
-        public string GetConfiguration(string org, string app, string name)
+        public string GetConfiguration(string org, string repo, string name)
         {
-            string filename = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + name.AsFileName();
+            string filename = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + name.AsFileName();
             string filedata = null;
 
             if (File.Exists(filename))
@@ -342,12 +342,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the content of a file path relative to the app folder
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The name of the configuration</param>
         /// <returns>A string containing the file content</returns>
-        public string GetFileByRelativePath(string org, string app, string fileName)
+        public string GetFileByRelativePath(string org, string repo, string fileName)
         {
-            string filename = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filename = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             string filedata = null;
 
             if (File.Exists(filename))
@@ -362,23 +362,23 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the path to the app folder
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>A string containing the path</returns>
-        public string GetAppPath(string org, string app)
+        public string GetAppPath(string org, string repo)
         {
-            return _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            return _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
         }
 
         /// <summary>
         /// Get content of resource file
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="id">The resource language id (for example <code>nb, en</code>)</param>
         /// <returns>The resource file content</returns>
-        public string GetLanguageResource(string org, string app, string id)
+        public string GetLanguageResource(string org, string repo, string id)
         {
-            string filename = _settings.GetLanguageResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"resource.{id.AsFileName()}.json";
+            string filename = _settings.GetLanguageResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"resource.{id.AsFileName()}.json";
             string filedata = null;
 
             if (File.Exists(filename))
@@ -393,18 +393,18 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the app texts
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <remarks>
         /// Format of the dictionary is: &lt;textResourceElementId &lt;language, textResourceElement&gt;&gt;
         /// </remarks>
         /// <returns>The texts in a dictionary</returns>
-        public Dictionary<string, Dictionary<string, TextResourceElement>> GetServiceTexts(string org, string app)
+        public Dictionary<string, Dictionary<string, TextResourceElement>> GetServiceTexts(string org, string repo)
         {
             Dictionary<string, Dictionary<string, TextResourceElement>> appTextsAllLanguages =
                 new Dictionary<string, Dictionary<string, TextResourceElement>>();
 
             // Get app level text resources
-            string resourcePath = _settings.GetLanguageResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string resourcePath = _settings.GetLanguageResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             appTextsAllLanguages = MergeResourceTexts(resourcePath, appTextsAllLanguages);
 
             // Get Org level text resources
@@ -472,13 +472,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns the app languages
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The text</returns>
-        public List<string> GetLanguages(string org, string app)
+        public List<string> GetLanguages(string org, string repo)
         {
             List<string> languages = new List<string>();
 
-            string resourcePath = _settings.GetLanguageResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string resourcePath = _settings.GetLanguageResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             if (!Directory.Exists(resourcePath))
             {
                 Directory.CreateDirectory(resourcePath);
@@ -499,9 +499,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Save app texts to resource files
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="texts">The texts to be saved</param>
-        public void SaveServiceTexts(string org, string app, Dictionary<string, Dictionary<string, TextResourceElement>> texts)
+        public void SaveServiceTexts(string org, string repo, Dictionary<string, Dictionary<string, TextResourceElement>> texts)
         {
             // Language, key, TextResourceElement
             Dictionary<string, Dictionary<string, TextResourceElement>> resourceTexts =
@@ -526,7 +526,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 }
             }
 
-            string resourcePath = _settings.GetLanguageResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string resourcePath = _settings.GetLanguageResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
 
             // loop through each language set of text resources
             foreach (KeyValuePair<string, Dictionary<string, TextResourceElement>> processedResource in resourceTexts)
@@ -549,12 +549,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the XSD model from disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Returns the XSD object as a string</returns>
-        public string GetXsdModel(string org, string app)
+        public string GetXsdModel(string org, string repo)
         {
-            string modelName = GetModelName(org, app);
-            string filename = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.xsd";
+            string modelName = GetModelName(org, repo);
+            string filename = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.xsd";
             string filedata = string.Empty;
 
             if (File.Exists(filename))
@@ -569,12 +569,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the Json Schema model from disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Returns the Json Schema object as a string</returns>
-        public string GetJsonSchemaModel(string org, string app)
+        public string GetJsonSchemaModel(string org, string repo)
         {
-            string modelName = GetModelName(org, app);
-            string filename = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.schema.json";
+            string modelName = GetModelName(org, repo);
+            string filename = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.schema.json";
             string filedata = null;
 
             if (File.Exists(filename))
@@ -586,28 +586,28 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public string GetJsonFormLayouts(string org, string app)
+        public string GetJsonFormLayouts(string org, string repo)
         {
             Dictionary<string, object> layouts = new Dictionary<string, dynamic>();
             string developer = AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext);
 
             // If FormLayout.json exists in app/ui => move it to app/ui/layouts (for backwards comp)
             string filedata = string.Empty;
-            string formLayoutPath = _settings.GetFormLayoutPath(org, app, developer);
+            string formLayoutPath = _settings.GetFormLayoutPath(org, repo, developer);
             if (File.Exists(formLayoutPath))
             {
                 filedata = File.ReadAllText(formLayoutPath, Encoding.UTF8);
-                DeleteOldFormLayoutJson(org, app, developer);
-                SaveFormLayout(org, app, "FormLayout", filedata);
+                DeleteOldFormLayoutJson(org, repo, developer);
+                SaveFormLayout(org, repo, "FormLayout", filedata);
             }
 
-            string formLayoutsPath = _settings.GetFormLayoutsPath(org, app, developer);
+            string formLayoutsPath = _settings.GetFormLayoutsPath(org, repo, developer);
             if (Directory.Exists(formLayoutsPath))
             {
                 foreach (string file in Directory.GetFiles(formLayoutsPath))
                 {
                     string data = File.ReadAllText(file, Encoding.UTF8);
-                    string name = file.Replace(_settings.GetFormLayoutsPath(org, app, developer), string.Empty).Replace(".json", string.Empty);
+                    string name = file.Replace(_settings.GetFormLayoutsPath(org, repo, developer), string.Empty).Replace(".json", string.Empty);
                     layouts.Add(name, JsonConvert.DeserializeObject<object>(data));
                 }
             }
@@ -619,11 +619,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the Json third party components from disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Returns the json object as a string</returns>
-        public string GetJsonThirdPartyComponents(string org, string app)
+        public string GetJsonThirdPartyComponents(string org, string repo)
         {
-            string filePath = _settings.GetThirdPartyComponentsPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetThirdPartyComponentsPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string fileData = null;
 
             if (File.Exists(filePath))
@@ -638,11 +638,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the Json form model from disk for Dynamics
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Returns the json object as a string</returns>
-        public string GetRuleHandler(string org, string app)
+        public string GetRuleHandler(string org, string repo)
         {
-            string filePath = _settings.GetRuleHandlerPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetRuleHandlerPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string fileData = null;
 
             if (File.Exists(filePath))
@@ -657,11 +657,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the Json form model from disk for Calculation
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Returns the json object as a string</returns>
-        public string GetCalculationHandler(string org, string app)
+        public string GetCalculationHandler(string org, string repo)
         {
-            string filePath = _settings.GetCalculationPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.RuleHandlerFileName;
+            string filePath = _settings.GetCalculationPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + _settings.RuleHandlerFileName;
             string fileData = null;
 
             if (File.Exists(filePath))
@@ -676,20 +676,20 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Get the Json file from disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The filename so read from</param>
         /// <returns>Returns the json object as a string</returns>
-        public string GetJsonFile(string org, string app, string fileName)
+        public string GetJsonFile(string org, string repo, string fileName)
         {
             string filePath;
 
             if (fileName.Equals(_settings.GetRuleConfigFileName()))
             {
-                filePath = _settings.GetRuleConfigPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                filePath = _settings.GetRuleConfigPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             }
             else
             {
-                filePath = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+                filePath = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             }
 
             string fileData = null;
@@ -703,20 +703,20 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc />
-        public bool SaveFormLayout(string org, string app, string formLayout, string content)
+        public bool SaveFormLayout(string org, string repo, string formLayout, string content)
         {
-            string filePath = _settings.GetFormLayoutPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext), formLayout);
+            string filePath = _settings.GetFormLayoutPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext), formLayout);
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, content, Encoding.UTF8);
             return true;
         }
 
         /// <inheritdoc />
-        public bool UpdateFormLayoutName(string org, string app, string currentName, string newName)
+        public bool UpdateFormLayoutName(string org, string repo, string currentName, string newName)
         {
             string developer = AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext);
-            string curFilePath = _settings.GetFormLayoutPath(org, app, developer, currentName);
-            string newFilePath = _settings.GetFormLayoutPath(org, app, developer, newName);
+            string curFilePath = _settings.GetFormLayoutPath(org, repo, developer, currentName);
+            string newFilePath = _settings.GetFormLayoutPath(org, repo, developer, newName);
             if (File.Exists(newFilePath) || !File.Exists(curFilePath))
             {
                 return false;
@@ -727,9 +727,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc />
-        public bool DeleteFormLayout(string org, string app, string formLayout)
+        public bool DeleteFormLayout(string org, string repo, string formLayout)
         {
-            string filePath = _settings.GetFormLayoutPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext), formLayout);
+            string filePath = _settings.GetFormLayoutPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext), formLayout);
             bool deleted = false;
             if (File.Exists(filePath))
             {
@@ -741,18 +741,18 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc />
-        public bool SaveLayoutSettings(string org, string app, string setting)
+        public bool SaveLayoutSettings(string org, string repo, string setting)
         {
-            string filePath = _settings.GetLayoutSettingPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetLayoutSettingPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, setting, Encoding.UTF8);
             return true;
         }
 
         /// <inheritdoc />
-        public string GetLayoutSettings(string org, string app)
+        public string GetLayoutSettings(string org, string repo)
         {
-            string filePath = _settings.GetLayoutSettingPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetLayoutSettingPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string filedata = null;
             if (File.Exists(filePath))
             {
@@ -766,12 +766,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Save rule handler file to disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="content">The content of the resource file</param>
         /// <returns>A boolean indicating if saving was ok</returns>
-        public bool SaveRuleHandler(string org, string app, string content)
+        public bool SaveRuleHandler(string org, string repo, string content)
         {
-            string filePath = _settings.GetRuleHandlerPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetRuleHandlerPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, content, Encoding.UTF8);
 
@@ -782,12 +782,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Save the JSON third party components to disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="resource">The content of the resource file</param>
         /// <returns>A boolean indicating if saving was ok</returns>
-        public bool SaveJsonThirdPartyComponents(string org, string app, string resource)
+        public bool SaveJsonThirdPartyComponents(string org, string repo, string resource)
         {
-            string filePath = _settings.GetThirdPartyComponentsPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetThirdPartyComponentsPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, resource, Encoding.UTF8);
 
@@ -795,9 +795,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public string GetWidgetSettings(string org, string app)
+        public string GetWidgetSettings(string org, string repo)
         {
-            string filePath = _settings.GetWidgetSettingsPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetWidgetSettingsPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string fileData = null;
             if (File.Exists(filePath))
             {
@@ -808,11 +808,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool AddTextResources(string org, string app, List<TextResource> textResourcesList)
+        public bool AddTextResources(string org, string repo, List<TextResource> textResourcesList)
         {
             foreach (TextResource textResource in textResourcesList)
             {
-                var currentResourceString = GetLanguageResource(org, app, textResource.Language);
+                var currentResourceString = GetLanguageResource(org, repo, textResource.Language);
                 TextResource currentTextResource = JsonConvert.DeserializeObject<TextResource>(currentResourceString);
                 var duplicateResources = textResource.Resources.FindAll(resource => currentTextResource.Resources.Find(r => r.Id == resource.Id) != null);
                 if (duplicateResources.Count == 0)
@@ -836,7 +836,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                     });
                 }
 
-                SaveLanguageResource(org, app, textResource.Language, JsonConvert.SerializeObject(currentTextResource));
+                SaveLanguageResource(org, repo, textResource.Language, JsonConvert.SerializeObject(currentTextResource));
             }
 
             return true;
@@ -846,13 +846,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Save the JSON file to disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="resource">The content of the resource file</param>
         /// <param name="fileName">The filename</param>
         /// <returns>A boolean indicating if saving was ok</returns>
-        public bool SaveJsonFile(string org, string app, string resource, string fileName)
+        public bool SaveJsonFile(string org, string repo, string resource, string fileName)
         {
-            string filePath = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filePath = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, resource, Encoding.UTF8);
 
@@ -863,12 +863,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Save the Rules configuration JSON file to disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="resource">The content of the resource file</param>
         /// <returns>A boolean indicating if saving was ok</returns>
-        public bool SaveRuleConfigJson(string org, string app, string resource)
+        public bool SaveRuleConfigJson(string org, string repo, string resource)
         {
-            string filePath = _settings.GetRuleConfigPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string filePath = _settings.GetRuleConfigPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
 
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, resource, Encoding.UTF8);
@@ -880,13 +880,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Method that stores configuration to disk
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="name">The name on config</param>
         /// <param name="config">The content</param>
         /// <returns>A boolean indicating if everything went ok</returns>
-        public bool SaveConfiguration(string org, string app, string name, string config)
+        public bool SaveConfiguration(string org, string repo, string name, string config)
         {
-            string filePath = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + name;
+            string filePath = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + name;
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, config, Encoding.UTF8);
 
@@ -897,13 +897,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Method that stores contents of file path relative to root
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The name on config</param>
         /// <param name="fileContent">The content</param>
         /// <returns>A boolean indicating if everything went ok</returns>
-        public bool SaveFile(string org, string app, string fileName, string fileContent)
+        public bool SaveFile(string org, string repo, string fileName, string fileContent)
         {
-            string filePath = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filePath = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             File.WriteAllText(filePath, fileContent, Encoding.UTF8);
             return true;
         }
@@ -912,13 +912,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Stores the resource for a given language id
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="id">The resource language id (for example <code>nb, en</code>)</param>
         /// <param name="resource">The content of the resource file</param>
         /// <returns>A boolean indicating if saving was ok</returns>
-        public bool SaveLanguageResource(string org, string app, string id, string resource)
+        public bool SaveLanguageResource(string org, string repo, string id, string resource)
         {
-            string filePath = _settings.GetLanguageResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"resource.{id.AsFileName()}.json";
+            string filePath = _settings.GetLanguageResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"resource.{id.AsFileName()}.json";
             new FileInfo(filePath).Directory.Create();
             File.WriteAllText(filePath, resource, Encoding.UTF8);
 
@@ -929,12 +929,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Deletes the language resource for a given language id
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="id">The resource language id (for example <code>nb, en</code>)</param>
         /// <returns>A boolean indicating if the delete was a success</returns>
-        public bool DeleteLanguage(string org, string app, string id)
+        public bool DeleteLanguage(string org, string repo, string id)
         {
-            string filename = string.Format(_settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext))) + $"resource.{id.AsFileName()}.json";
+            string filename = string.Format(_settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext))) + $"resource.{id.AsFileName()}.json";
             bool deleted = false;
 
             if (File.Exists(filename))
@@ -950,22 +950,22 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Creates the model based on XSD
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="modelMetadata">The modelMetadata to generate the model based on</param>
         /// <param name="mainXsd">The main XSD for the current app</param>
         /// <param name="fileName">The name of the model metadata file.</param>
         /// <returns>A value indicating if everything went ok</returns>
-        public bool CreateModel(string org, string app, ModelMetadata modelMetadata, XDocument mainXsd, string fileName)
+        public bool CreateModel(string org, string repo, ModelMetadata modelMetadata, XDocument mainXsd, string fileName)
         {
             JsonMetadataParser modelGenerator = new JsonMetadataParser();
 
             modelMetadata.Org = org;
-            modelMetadata.RepositoryName = app;
+            modelMetadata.RepositoryName = repo;
 
             string classes = modelGenerator.CreateModelFromMetadata(modelMetadata);
             string root = modelMetadata.Elements != null && modelMetadata.Elements.Count > 0 ? modelMetadata.Elements.Values.First(e => e.ParentElement == null).TypeName : null;
 
-            if (!UpdateModelMetadata(org, app, modelMetadata, fileName))
+            if (!UpdateModelMetadata(org, repo, modelMetadata, fileName))
             {
                 return false;
             }
@@ -973,7 +973,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             // Create the .cs file for the model
             try
             {
-                string filePath = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".cs";
+                string filePath = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".cs";
                 new FileInfo(filePath).Directory.Create();
                 File.WriteAllText(filePath, classes, Encoding.UTF8);
             }
@@ -989,7 +989,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 // Create the .xsd file for the model
                 try
                 {
-                    string filePath = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".xsd";
+                    string filePath = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".xsd";
                     new FileInfo(filePath).Directory.Create();
                     File.WriteAllText(filePath, mainXsdString, Encoding.UTF8);
                 }
@@ -1009,7 +1009,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
 
                     JsonSchema jsonSchema = xsdToJsonSchemaConverter.AsJsonSchema();
 
-                    string filePath = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".schema.json";
+                    string filePath = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName + ".schema.json";
                     new FileInfo(filePath).Directory.Create();
                     File.WriteAllText(filePath, new Manatee.Json.Serialization.JsonSerializer().Serialize(jsonSchema).GetIndentedString(0), Encoding.UTF8);
                 }
@@ -1020,7 +1020,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
 
             // Update the ServiceImplementation class with the correct model type name
-            UpdateApplicationWithAppLogicModel(org, app, fileName, "Altinn.App.Models." + root);
+            UpdateApplicationWithAppLogicModel(org, repo, fileName, "Altinn.App.Models." + root);
 
             return true;
         }
@@ -1029,12 +1029,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         ///  Updates application model with new app logic model
         /// </summary>
         /// <param name="org">The org</param>
-        /// <param name="app">The app</param>
+        /// <param name="repo">The app</param>
         /// <param name="dataTypeId">The dataTypeId for the new app logic datamodel</param>
         /// <param name="classRef">The class ref</param>
-        public void UpdateApplicationWithAppLogicModel(string org, string app, string dataTypeId, string classRef)
+        public void UpdateApplicationWithAppLogicModel(string org, string repo, string dataTypeId, string classRef)
         {
-            PlatformStorageModels.Application application = GetApplication(org, app);
+            PlatformStorageModels.Application application = GetApplication(org, repo);
             if (application.DataTypes == null)
             {
                 application.DataTypes = new List<PlatformStorageModels.DataType>();
@@ -1042,7 +1042,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
 
             PlatformStorageModels.DataType existingLogicElement = application.DataTypes.FirstOrDefault((d) => d.AppLogic != null);
             PlatformStorageModels.DataType logicElement = application.DataTypes.SingleOrDefault(d => d.Id == dataTypeId);
-            
+
             if (logicElement == null)
             {
                 logicElement = new PlatformStorageModels.DataType
@@ -1057,21 +1057,21 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
 
             logicElement.AppLogic = new PlatformStorageModels.ApplicationLogic { AutoCreate = true, ClassRef = classRef };
-            UpdateApplication(org, app, application);
+            UpdateApplication(org, repo, application);
         }
 
         /// <summary>
         /// Gets the content of the application model as string.
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>Application model content.</returns>
-        public string GetAppModel(string org, string app)
+        public string GetAppModel(string org, string repo)
         {
-            string modelName = GetModelName(org, app);
+            string modelName = GetModelName(org, repo);
 
             string filedata = string.Empty;
-            string filename = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.cs";
+            string filename = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + $"{modelName}.cs";
 
             if (File.Exists(filename))
             {
@@ -1098,16 +1098,16 @@ namespace Altinn.Studio.Designer.Services.Implementation
             {
                 string[] appPaths = Directory.GetDirectories(orgPath);
 
-                foreach (string appPath in appPaths)
+                foreach (string repoPath in appPaths)
                 {
-                    string app = Path.GetFileName(appPath);
+                    string repo = Path.GetFileName(repoPath);
 
                     // TODO: figure out if this code is critical for dashboard.
                     /*
-                    string metadataPath = _settings.GetMetadataPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                    string metadataPath = _settings.GetMetadataPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                     if (Directory.Exists(metadataPath))
                     {
-                        apps.Add(GetServiceMetaData(org, app));
+                        apps.Add(GetServiceMetaData(org, repo));
                     }*/
                 }
             }
@@ -1226,12 +1226,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <summary>
-        /// Delete an app folder from disk.
+        /// Delete an repo folder from disk.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>true if success, false otherwise</returns>
-        public bool DeleteService(string org, string app)
+        public bool DeleteService(string org, string repo)
         {
             try
             {
@@ -1240,15 +1240,15 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 string directoryPath = null;
 
                 org = org.AsFileName();
-                app = app.AsFileName();
+                repo = repo.AsFileName();
 
                 directoryPath = (Environment.GetEnvironmentVariable("ServiceRepositorySettings__RepositoryLocation") != null)
                                 ? $"{Environment.GetEnvironmentVariable("ServiceRepositorySettings__RepositoryLocation")}/{developerUserName}/{org}"
                                 : $"{_settings.RepositoryLocation}/{developerUserName}/{org}";
 
-                if (!string.IsNullOrEmpty(app))
+                if (!string.IsNullOrEmpty(repo))
                 {
-                    directoryPath += "/" + app;
+                    directoryPath += "/" + repo;
                 }
                 else
                 {
@@ -1290,15 +1290,15 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Delete text resource
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="name">The name of the view</param>
-        public void DeleteTextResource(string org, string app, string name)
+        public void DeleteTextResource(string org, string repo, string name)
         {
             Guard.AssertArgumentNotNullOrWhiteSpace(name, nameof(name));
             string resourceTextKey = ViewResourceKey(name);
 
-            IEnumerable<ResourceWrapper> resources = GetAllResources(org, app);
+            IEnumerable<ResourceWrapper> resources = GetAllResources(org, repo);
             foreach (ResourceWrapper resource in resources)
             {
                 ResourceCollection jsonFileContent = resource.Resources;
@@ -1315,14 +1315,14 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Returns a list of files in the Implementation directory.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>A list of file names</returns>
-        public List<AltinnCoreFile> GetImplementationFiles(string org, string app)
+        public List<AltinnCoreFile> GetImplementationFiles(string org, string repo)
         {
             List<AltinnCoreFile> coreFiles = new List<AltinnCoreFile>();
 
-            string[] files = Directory.GetFiles(_settings.GetImplementationPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
+            string[] files = Directory.GetFiles(_settings.GetImplementationPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
             foreach (string file in files)
             {
                 AltinnCoreFile corefile = new AltinnCoreFile
@@ -1337,9 +1337,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
 
             string[] modelFiles = null;
 
-            if (Directory.Exists(_settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext))))
+            if (Directory.Exists(_settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext))))
             {
-                modelFiles = Directory.GetFiles(_settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
+                modelFiles = Directory.GetFiles(_settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
                 foreach (string file in modelFiles)
                 {
                     AltinnCoreFile corefile = new AltinnCoreFile
@@ -1353,7 +1353,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 }
             }
 
-            string[] jsFiles = Directory.GetFiles(_settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
+            string[] jsFiles = Directory.GetFiles(_settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
             foreach (string file in jsFiles)
             {
                 if (Path.GetFileName(file) == _settings.RuleHandlerFileName)
@@ -1375,14 +1375,14 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Returns a list of files in the Dynamics directory.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>A list of file names</returns>
-        public List<AltinnCoreFile> GetDynamicsFiles(string org, string app)
+        public List<AltinnCoreFile> GetDynamicsFiles(string org, string repo)
         {
             List<AltinnCoreFile> coreFiles = new List<AltinnCoreFile>();
 
-            string rulehandlerPath = _settings.GetRuleHandlerPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string rulehandlerPath = _settings.GetRuleHandlerPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             AltinnCoreFile ruleFile = new AltinnCoreFile
             {
                 FilePath = rulehandlerPath,
@@ -1398,14 +1398,14 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Returns a list of files in the Calculation directory.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>A list of file names</returns>
-        public List<AltinnCoreFile> GetCalculationFiles(string org, string app)
+        public List<AltinnCoreFile> GetCalculationFiles(string org, string repo)
         {
             List<AltinnCoreFile> coreFiles = new List<AltinnCoreFile>();
 
-            string[] files = Directory.GetFiles(_settings.GetCalculationPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
+            string[] files = Directory.GetFiles(_settings.GetCalculationPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
             foreach (string file in files)
             {
                 AltinnCoreFile corefile = new AltinnCoreFile
@@ -1424,14 +1424,14 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Returns a list of the validation files in the Validation directory.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>A list of file names</returns>
-        public List<AltinnCoreFile> GetValidationFiles(string org, string app)
+        public List<AltinnCoreFile> GetValidationFiles(string org, string repo)
         {
             List<AltinnCoreFile> coreFiles = new List<AltinnCoreFile>();
 
-            string[] files = Directory.GetFiles(_settings.GetValidationPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
+            string[] files = Directory.GetFiles(_settings.GetValidationPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)));
             foreach (string file in files)
             {
                 AltinnCoreFile corefile = new AltinnCoreFile
@@ -1451,12 +1451,12 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Returns content of an app logic file
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The file name</param>
         /// <returns>Content of an implementation file</returns>
-        public string GetAppLogic(string org, string app, string fileName)
+        public string GetAppLogic(string org, string repo, string fileName)
         {
-            string filename = _settings.GetAppLogicPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filename = _settings.GetAppLogicPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             string filedata = null;
 
             if (File.Exists(filename))
@@ -1470,13 +1470,13 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// <summary>
         /// Returns content of a resource file
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The file Name</param>
         /// <returns>The file content</returns>
-        public string GetResourceFile(string org, string app, string fileName)
+        public string GetResourceFile(string org, string repo, string fileName)
         {
-            string filename = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filename = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             string filedata = null;
 
             if (File.Exists(filename))
@@ -1491,45 +1491,45 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Saving an implementation file
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The file name</param>
         /// <param name="fileContent">The file content</param>
-        public void SaveAppLogicFile(string org, string app, string fileName, string fileContent)
+        public void SaveAppLogicFile(string org, string repo, string fileName, string fileContent)
         {
-            string filename = _settings.GetAppLogicPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+            string filename = _settings.GetAppLogicPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
             File.WriteAllText(filename, fileContent, Encoding.UTF8);
         }
 
         /// <summary>
         /// Saving a resouce file
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileName">The fileName</param>
         /// <param name="fileContent">The file content</param>
-        public void SaveResourceFile(string org, string app, string fileName, string fileContent)
+        public void SaveResourceFile(string org, string repo, string fileName, string fileContent)
         {
             if (fileName.Contains(_settings.RuleHandlerFileName, StringComparison.OrdinalIgnoreCase))
             {
-                string filename = _settings.GetRuleHandlerPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string filename = _settings.GetRuleHandlerPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                 File.WriteAllText(filename, fileContent, Encoding.UTF8);
             }
             else
             {
-                string filename = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
+                string filename = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + fileName;
                 File.WriteAllText(filename, fileContent, Encoding.UTF8);
             }
         }
 
         /// <summary>
         /// Updates the view name text resource.
-        /// "view." + viewName for each text resource in the app
+        /// "view." + viewName for each text resource in the repo
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="currentName">Current / old view name</param>
         /// <param name="newName">the new view name</param>
-        public void UpdateViewNameTextResource(string org, string app, string currentName, string newName)
+        public void UpdateViewNameTextResource(string org, string repo, string currentName, string newName)
         {
             Guard.AssertArgumentNotNullOrWhiteSpace(currentName, nameof(currentName));
             Guard.AssertArgumentNotNullOrWhiteSpace(newName, nameof(newName));
@@ -1537,7 +1537,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             string currentKey = ViewResourceKey(currentName);
             string newKey = ViewResourceKey(newName);
 
-            IEnumerable<ResourceWrapper> resources = GetAllResources(org, app);
+            IEnumerable<ResourceWrapper> resources = GetAllResources(org, repo);
             foreach (ResourceWrapper resource in resources)
             {
                 List<Resource> itemsToUpdate = resource.FilterById(currentKey).ToList();
@@ -1558,16 +1558,16 @@ namespace Altinn.Studio.Designer.Services.Implementation
         /// Finds an app resource embedded in the app when running from local file folders
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="resource">The app resource file name</param>
         /// <returns>The app resource</returns>
-        public byte[] GetServiceResource(string org, string app, string resource)
+        public byte[] GetServiceResource(string org, string repo, string resource)
         {
             byte[] fileContent = null;
 
             if (resource == _settings.RuleHandlerFileName)
             {
-                string dynamicsPath = _settings.GetDynamicsPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string dynamicsPath = _settings.GetDynamicsPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                 if (File.Exists(dynamicsPath + resource))
                 {
                     fileContent = File.ReadAllBytes(dynamicsPath + resource);
@@ -1575,7 +1575,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
             else
             {
-                string appResourceDirectoryPath = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string appResourceDirectoryPath = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
                 if (File.Exists(appResourceDirectoryPath + resource))
                 {
                     fileContent = File.ReadAllBytes(appResourceDirectoryPath + resource);
@@ -1586,11 +1586,11 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool UpdateServiceInformationInApplication(string org, string app, ServiceConfiguration applicationInformation)
+        public bool UpdateServiceInformationInApplication(string org, string repo, ServiceConfiguration applicationInformation)
         {
             try
             {
-                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, app);
+                PlatformStorageModels.Application existingApplicationMetadata = GetApplication(org, repo);
 
                 if (existingApplicationMetadata.Title == null)
                 {
@@ -1607,7 +1607,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
                 }
 
                 string metadataAsJson = JsonConvert.SerializeObject(existingApplicationMetadata, Newtonsoft.Json.Formatting.Indented);
-                string filePath = _settings.GetAppMetadataFilePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+                string filePath = _settings.GetAppMetadataFilePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
 
                 File.WriteAllText(filePath, metadataAsJson, Encoding.UTF8);
             }
@@ -1620,9 +1620,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public bool UpdateAppTitle(string org, string app, string languageId, string newTitle)
+        public bool UpdateAppTitle(string org, string repo, string languageId, string newTitle)
         {
-            PlatformStorageModels.Application appMetadata = GetApplication(org, app);
+            PlatformStorageModels.Application appMetadata = GetApplication(org, repo);
 
             if (appMetadata == null)
             {
@@ -1641,7 +1641,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
 
             appMetadata.Title = titles;
 
-            return UpdateApplication(org, app, appMetadata);
+            return UpdateApplication(org, repo, appMetadata);
         }
 
         /// <summary>
@@ -1702,21 +1702,21 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         // IKKE SLETT
-        private void UpdateAuthorizationPolicyFile(string org, string app)
+        private void UpdateAuthorizationPolicyFile(string org, string repo)
         {
             // Read the authorization policy template (XACML file).
-            string path = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string path = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string policyPath = path + _generalSettings.AuthorizationPolicyTemplate;
             string authorizationPolicyData = File.ReadAllText(policyPath, Encoding.UTF8);
 
             // Replace "org" and "app" in the authorization policy file.
-            authorizationPolicyData = authorizationPolicyData.Replace("[ORG]", org).Replace("[APP]", app);
+            authorizationPolicyData = authorizationPolicyData.Replace("[ORG]", org).Replace("[APP]", repo);
             File.WriteAllText(policyPath, authorizationPolicyData, Encoding.UTF8);
         }
 
-        private void CopyFolderToApp(string org, string app, string sourcePath, string path)
+        private void CopyFolderToApp(string org, string repo, string sourcePath, string path)
         {
-            string targetPath = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + path;
+            string targetPath = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + path;
 
             // Create the app deployment folder
             Directory.CreateDirectory(targetPath);
@@ -1734,21 +1734,21 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
         }
 
-        private void CopyFileToApp(string org, string app, string fileName)
+        private void CopyFileToApp(string org, string repo, string fileName)
         {
-            string appPath = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
-            File.Copy($"{_generalSettings.TemplatePath}/{fileName}", appPath + fileName);
+            string repoPath = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            File.Copy($"{_generalSettings.TemplatePath}/{fileName}", repoPath + fileName);
         }
 
         /// <summary>
         /// A dictionary, where the full filename is key, and the value is a deserialized ResourceCollection
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>IEnumerable loading the resources as you ask for next.</returns>
-        private IEnumerable<ResourceWrapper> GetAllResources(string org, string app)
+        private IEnumerable<ResourceWrapper> GetAllResources(string org, string repo)
         {
-            string resourcePath = _settings.GetResourcePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string resourcePath = _settings.GetResourcePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             string[] directoryFiles = Directory.GetFiles(resourcePath);
 
             foreach (string resourceFile in directoryFiles)
@@ -1759,9 +1759,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc/>
-        public string GetPrefillJson(string org, string app, string dataModelName = "ServiceModel")
+        public string GetPrefillJson(string org, string repo, string dataModelName = "ServiceModel")
         {
-            string filename = _settings.GetModelPath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + dataModelName + ".prefill.json";
+            string filename = _settings.GetModelPath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)) + dataModelName + ".prefill.json";
             string filedata = null;
             if (File.Exists(filename))
             {
@@ -1852,9 +1852,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
             return fso;
         }
 
-        private string GetModelName(string org, string app)
+        private string GetModelName(string org, string repo)
         {
-            PlatformStorageModels.Application application = GetApplication(org, app);
+            PlatformStorageModels.Application application = GetApplication(org, repo);
 
             string dataTypeId = string.Empty;
             foreach (PlatformStorageModels.DataType data in application.DataTypes)
@@ -1868,9 +1868,9 @@ namespace Altinn.Studio.Designer.Services.Implementation
             return dataTypeId;
         }
 
-        private void DeleteOldFormLayoutJson(string org, string app, string developer)
+        private void DeleteOldFormLayoutJson(string org, string repo, string developer)
         {
-            string path = _settings.GetFormLayoutPath(org, app, developer);
+            string path = _settings.GetFormLayoutPath(org, repo, developer);
             if (File.Exists(path))
             {
                 File.Delete(path);

@@ -46,24 +46,24 @@ namespace Altinn.Studio.Designer.Controllers
         /// <summary>
         /// The default action presenting the application model.
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The model main page</returns>
-        public ActionResult Index(string org, string app)
+        public ActionResult Index(string org, string repo)
         {
-            ModelMetadata metadata = _repository.GetModelMetadata(org, app);
+            ModelMetadata metadata = _repository.GetModelMetadata(org, repo);
             return View(metadata);
         }
 
         /// <summary>
         /// Post action that is used when uploading a XSD and secondary XSD
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="thefile">The main XSD</param>
         /// <returns>Return JSON of the generated model</returns>
         [HttpPost]
-        public ActionResult Upload(string org, string app, IFormFile thefile)
+        public ActionResult Upload(string org, string repo, IFormFile thefile)
         {
             if (thefile == null)
             {
@@ -85,25 +85,25 @@ namespace Altinn.Studio.Designer.Controllers
             XsdToJsonSchema xsdToJsonSchemaConverter = new XsdToJsonSchema(reader, _loggerFactory.CreateLogger<XsdToJsonSchema>());
             JsonSchema schemaJsonSchema = xsdToJsonSchemaConverter.AsJsonSchema();
 
-            JsonSchemaToInstanceModelGenerator converter = new JsonSchemaToInstanceModelGenerator(org, app, schemaJsonSchema);
+            JsonSchemaToInstanceModelGenerator converter = new JsonSchemaToInstanceModelGenerator(org, repo, schemaJsonSchema);
             ModelMetadata modelMetadata = converter.GetModelMetadata();
 
-            HandleTexts(org, app, converter.GetTexts());
+            HandleTexts(org, repo, converter.GetTexts());
 
             string modelName = Path.GetFileNameWithoutExtension(mainFileName);
 
-            if (_repository.CreateModel(org, app, modelMetadata, mainXsd, modelName))
+            if (_repository.CreateModel(org, repo, modelMetadata, mainXsd, modelName))
             {
-                return RedirectToAction("Index", new { org, app, modelName });
+                return RedirectToAction("Index", new { org, repo, modelName });
             }
 
             return Json(false);
         }
 
-        private void HandleTexts(string org, string app, Dictionary<string, Dictionary<string, TextResourceElement>> modelTexts)
+        private void HandleTexts(string org, string repo, Dictionary<string, Dictionary<string, TextResourceElement>> modelTexts)
         {
             // <textResourceElement.Id <language, textResourceElement>>
-            Dictionary<string, Dictionary<string, TextResourceElement>> existingTexts = _repository.GetServiceTexts(org, app);
+            Dictionary<string, Dictionary<string, TextResourceElement>> existingTexts = _repository.GetServiceTexts(org, repo);
 
             if (existingTexts == null)
             {
@@ -118,7 +118,7 @@ namespace Altinn.Studio.Designer.Controllers
                 {
                     existingTexts.Add(textResourceElementId, new Dictionary<string, TextResourceElement>());
                 }
-                
+
                 foreach (KeyValuePair<string, TextResourceElement> localizedString in textResourceElementDict.Value)
                 {
                     string language = localizedString.Key;
@@ -130,59 +130,59 @@ namespace Altinn.Studio.Designer.Controllers
                 }
             }
 
-            _repository.SaveServiceTexts(org, app, existingTexts);
+            _repository.SaveServiceTexts(org, repo, existingTexts);
         }
 
         /// <summary>
         /// Return JSON presentation of the model
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="texts">Boolean indicating if text should be included</param>
         /// <param name="restrictions">Boolean indicating if restrictions should be included</param>
         /// <param name="attributes">Boolean indicating if attributes should be included</param>
         /// <returns>The model as JSON</returns>
         [HttpGet]
-        public ActionResult GetJson(string org, string app, bool texts = true, bool restrictions = true, bool attributes = true)
+        public ActionResult GetJson(string org, string repo, bool texts = true, bool restrictions = true, bool attributes = true)
         {
-            ModelMetadata metadata = _repository.GetModelMetadata(org, app);
+            ModelMetadata metadata = _repository.GetModelMetadata(org, repo);
             return Json(metadata, new JsonSerializerSettings() { Formatting = Newtonsoft.Json.Formatting.Indented });
         }
 
         /// <summary>
         /// Returns the model as C# code
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The model as C#</returns>
         [HttpGet]
-        public ActionResult GetModel(string org, string app)
+        public ActionResult GetModel(string org, string repo)
         {
-            return Content(_repository.GetAppModel(org, app), "text/plain", Encoding.UTF8);
+            return Content(_repository.GetAppModel(org, repo), "text/plain", Encoding.UTF8);
         }
 
         /// <summary>
         /// Get the model as XSD
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The model representation as XSD</returns>
         [HttpGet]
-        public ActionResult GetXsd(string org, string app)
+        public ActionResult GetXsd(string org, string repo)
         {
-            return Content(_repository.GetXsdModel(org, app), "text/plain", Encoding.UTF8);
+            return Content(_repository.GetXsdModel(org, repo), "text/plain", Encoding.UTF8);
         }
 
         /// <summary>
         /// Get the model as Json Schema
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The model representation as Json Schema</returns>
         [HttpGet]
-        public ActionResult GetJsonSchema(string org, string app)
+        public ActionResult GetJsonSchema(string org, string repo)
         {
-            return Content(_repository.GetJsonSchemaModel(org, app), "text/plain", Encoding.UTF8);
+            return Content(_repository.GetJsonSchemaModel(org, repo), "text/plain", Encoding.UTF8);
         }
     }
 }

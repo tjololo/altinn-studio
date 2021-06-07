@@ -70,7 +70,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             {
                 AppCommitId = release.TargetCommitish,
                 AppOwner = release.Org,
-                AppRepo = release.App,
+                AppRepo = release.Repo,
                 TagName = release.TagName
             };
 

@@ -56,11 +56,11 @@ namespace Altinn.Studio.Designer.Helpers
         /// Assert that org and app arguments are present (not null or whitespace).
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
-        public static void AssertOrgApp(string org, string app)
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
+        public static void AssertOrgApp(string org, string repo)
         {
             AssertArgumentNotNullOrWhiteSpace(org, nameof(org));
-            AssertArgumentNotNullOrWhiteSpace(app, nameof(app));
+            AssertArgumentNotNullOrWhiteSpace(repo, nameof(repo));
         }
     }
 }

@@ -12,12 +12,12 @@ namespace Altinn.Studio.Designer.Services.Interfaces
         /// Registers the text resources connected to a specific GITEA repository on a certain commitId
         /// </summary>
         /// <param name="org">Organisation</param>
-        /// <param name="app">Application</param>
+        /// <param name="repo">Application</param>
         /// <param name="shortCommitId">Commit Id</param>
         /// <param name="environmentModel">EnvironmentModel</param>
         Task UpdateTextResourcesAsync(
             string org,
-            string app,
+            string repo,
             string shortCommitId,
             EnvironmentModel environmentModel);
     }

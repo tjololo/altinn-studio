@@ -11,14 +11,14 @@ namespace Altinn.Studio.Designer.Helpers
     public static class ApplicationHelper
     {
         /// <summary>
-        /// Gets the application id  (appId) formatted as "org/app"
+        /// Gets the application id  (appId) formatted as "org/repo"
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns></returns>
-        public static string GetFormattedApplicationId(string org, string app)
+        public static string GetFormattedApplicationId(string org, string repo)
         {
-            return $"{org}/{app}";
+            return $"{org}/{repo}";
         }
 
         /// <summary>

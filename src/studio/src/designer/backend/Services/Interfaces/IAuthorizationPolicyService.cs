@@ -12,13 +12,13 @@ namespace Altinn.Studio.Designer.Services.Interfaces
         /// Updates the Authorization policy for an app
         /// </summary>
         /// <param name="org">Organisation</param>
-        /// <param name="app">Application</param>
+        /// <param name="repo">Application</param>
         /// <param name="fullCommitId">The full commit SHA</param>
         /// <param name="deploymentEnvironment">EnvironmentModel</param>
         /// <returns></returns>
         Task UpdateApplicationAuthorizationPolicyAsync(
             string org,
-            string app,
+            string repo,
             string fullCommitId,
             EnvironmentModel deploymentEnvironment);
     }

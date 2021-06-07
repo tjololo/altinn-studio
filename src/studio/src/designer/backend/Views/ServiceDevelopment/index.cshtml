@@ -4,23 +4,23 @@
 }
 
 @section scripts {
-  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
-  <script src="https://use.fortawesome.com/bdabc5c1.js"></script>
-  <script src="https://use.fortawesome.com/ed31cded.js"></script>
-  <script src="~/designer/js/lib/bootstrap.min.js" asp-append-version="true"></script>
-  <script src="~/designer/js/lib/jquery.min.js" asp-append-version="true"></script>
-  <script src="~/designer/js/jqueryextensions/bootstrap-treeview.extension.js" asp-append-version="true"></script>
-  <script src="~/designer/js/lib/monaco-editor/vs/loader.js" asp-append-version="true"></script>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
+<script src="https://use.fortawesome.com/bdabc5c1.js"></script>
+<script src="https://use.fortawesome.com/ed31cded.js"></script>
+<script src="~/designer/js/lib/bootstrap.min.js" asp-append-version="true"></script>
+<script src="~/designer/js/lib/jquery.min.js" asp-append-version="true"></script>
+<script src="~/designer/js/jqueryextensions/bootstrap-treeview.extension.js" asp-append-version="true"></script>
+<script src="~/designer/js/lib/monaco-editor/vs/loader.js" asp-append-version="true"></script>
 }
 
 @{
   string org = ViewContext.RouteData.Values["org"] as string;
-  string app = ViewContext.RouteData.Values["app"] as string;
+  string repo = ViewContext.RouteData.Values["repo"] as string;
 }
 
 <script>
-    window.org = '@org';
-    window.app = '@app';
+  window.org = '@org';
+  window.repo = '@repo';
 </script>
 
 <!-- These imports are imported multiple times, we will need to clean up afterwards -->

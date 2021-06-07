@@ -17,14 +17,14 @@ namespace Altinn.Studio.Designer.Repository.Models
         /// </summary>
         /// <param name="entity">BaseEntity</param>
         /// <param name="org">org</param>
-        /// <param name="app">app</param>
+        /// <param name="repo">repo</param>
         /// <param name="httpContext">HttpContext</param>
         /// <returns></returns>
-        public static BaseEntity PopulateBaseProperties(this BaseEntity entity, string org, string app, HttpContext httpContext)
+        public static BaseEntity PopulateBaseProperties(this BaseEntity entity, string org, string repo, HttpContext httpContext)
         {
             List<Claim> claims = httpContext.User.Claims.ToList();
             entity.Org = org;
-            entity.App = app;
+            entity.Repo = repo;
             entity.Created = DateTime.Now;
             entity.CreatedBy = claims.FirstOrDefault(x => x.Type == AltinnCoreClaimTypes.Developer)?.Value;
 

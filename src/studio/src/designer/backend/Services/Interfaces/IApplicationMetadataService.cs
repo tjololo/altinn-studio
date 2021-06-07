@@ -12,12 +12,12 @@ namespace Altinn.Studio.Designer.Services.Interfaces
         /// Registers the metadata connected to a specific GITEA repository on a certain commitId
         /// </summary>
         /// <param name="org">Organisation</param>
-        /// <param name="app">Application</param>
+        /// <param name="repo">Application</param>
         /// <param name="fullCommitId">Commit Id</param>
         /// <param name="deploymentEnvironment">EnvironmentModel</param>
         Task UpdateApplicationMetadataAsync(
             string org,
-            string app,
+            string repo,
             string fullCommitId,
             EnvironmentModel deploymentEnvironment);
     }

@@ -189,11 +189,11 @@ namespace Altinn.Studio.Designer
 
                 endpoints.MapControllerRoute(
                         name: "serviceDevelopmentRoute",
-                        pattern: "designer/{org}/{app}",
+                        pattern: "designer/{org}/{repo}",
                         defaults: new { controller = "ServiceDevelopment", action = "index" },
                         constraints: new
                         {
-                            app = "^[a-z]+[a-zA-Z0-9-]+[a-zA-Z0-9]$",
+                            repo = "^[a-z]+[a-zA-Z0-9-]+[a-zA-Z0-9]$",
                         });
 
                 endpoints.MapControllerRoute(
@@ -206,18 +206,18 @@ namespace Altinn.Studio.Designer
                         });
                 endpoints.MapControllerRoute(
                           name: "serviceRoute",
-                          pattern: "designer/{org}/{app}/{controller}/{action=Index}/{id?}",
+                          pattern: "designer/{org}/{repo}/{controller}/{action=Index}/{id?}",
                           defaults: new { controller = "Service" },
                           constraints: new
                           {
                               controller = @"(Config|RuntimeAPI|ManualTesting|Model|Rules|ServiceMetadata|Text|UI|UIEditor|ServiceDevelopment)",
-                              app = "^[a-z]+[a-zA-Z0-9-]+[a-zA-Z0-9]$",
+                              repo = "^[a-z]+[a-zA-Z0-9-]+[a-zA-Z0-9]$",
                               id = "[a-zA-Z0-9_\\-\\.]{1,30}",
                           });
 
                 endpoints.MapControllerRoute(
                        name: "applicationMetadataApiRoute",
-                       pattern: "designer/api/v1/{org}/{app}",
+                       pattern: "designer/api/v1/{org}/{repo}",
                        defaults: new { controller = "ApplicationMetadata", action = "ApplicationMetadata" });
 
                 endpoints.MapControllerRoute(

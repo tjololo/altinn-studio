@@ -12,7 +12,7 @@ namespace Altinn.Studio.Designer.Controllers
     [ApiController]
     [Authorize]
     [AutoValidateAntiforgeryToken]
-    [Route("/designer/api/v1/{org}/{app}")]
+    [Route("/designer/api/v1/{org}/{repo}")]
     public class ApplicationMetadataController : ControllerBase
     {
         private readonly IRepository _repository;
@@ -27,16 +27,16 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// Gets the application metadata, url GET "/designer/api/v1/org/app/"
+        /// Gets the application metadata, url GET "/designer/api/v1/org/repo/"
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The application metadata</returns>
         [HttpGet]
         [ActionName("ApplicationMetadata")]
-        public ActionResult GetApplicationMetadata(string org, string app)
+        public ActionResult GetApplicationMetadata(string org, string repo)
         {
-            Application application = _repository.GetApplication(org, app);
+            Application application = _repository.GetApplication(org, repo);
             if (application == null)
             {
                 return NotFound();
@@ -46,19 +46,19 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// Puts the application metadata, url PUT "/designer/api/v1/org/app/
+        /// Puts the application metadata, url PUT "/designer/api/v1/org/repo/
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="applicationMetadata">The application metadata</param>
         /// <returns>The updated application metadata</returns>
         [HttpPut]
         [ActionName("ApplicationMetadata")]
-        public ActionResult UpdateApplicationMetadata(string org, string app, [FromBody] Application applicationMetadata)
+        public ActionResult UpdateApplicationMetadata(string org, string repo, [FromBody] Application applicationMetadata)
         {
-            if (_repository.UpdateApplication(org, app, applicationMetadata))
+            if (_repository.UpdateApplication(org, repo, applicationMetadata))
             {
-                Application updatedApplicationMetadata = _repository.GetApplication(org, app);
+                Application updatedApplicationMetadata = _repository.GetApplication(org, repo);
                 return Ok(updatedApplicationMetadata);
             }
             else
@@ -68,30 +68,30 @@ namespace Altinn.Studio.Designer.Controllers
         }
 
         /// <summary>
-        /// Create an application metadata, url POST "/designer/api/v1/org/app"
+        /// Create an application metadata, url POST "/designer/api/v1/org/repo"
         /// </summary>
-        /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="org">Unique identifier of the organisation responsible for the repo.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <returns>The created application metadata</returns>
         [HttpPost]
         [ActionName("ApplicationMetadata")]
-        public ActionResult CreateApplicationMetadata(string org, string app)
+        public ActionResult CreateApplicationMetadata(string org, string repo)
         {
-            if (_repository.GetApplication(org, app) != null)
+            if (_repository.GetApplication(org, repo) != null)
             {
                 return Conflict("ApplicationMetadata allready exists.");
             }
             else
             {
                 // TO DO: Application title handling (issue #2053/#1725)
-                _repository.CreateApplicationMetadata(org, app, app);
-                Application createdApplication = _repository.GetApplication(org, app);
+                _repository.CreateApplicationMetadata(org, repo, repo);
+                Application createdApplication = _repository.GetApplication(org, repo);
                 if (createdApplication == null)
                 {
                     return StatusCode(500);
                 }
 
-                return Created($"/designer/api/v1/{org}/{app}", createdApplication);
+                return Created($"/designer/api/v1/{org}/{repo}", createdApplication);
             }
         }
     }

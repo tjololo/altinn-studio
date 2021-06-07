@@ -19,6 +19,9 @@ import LeftDrawerMenu from 'app-shared/navigation/drawer/LeftDrawerMenu';
 import AppBarComponent from 'app-shared/navigation/main-header/appBar';
 import altinnTheme from 'app-shared/theme/altinnStudioTheme';
 import postMessages from 'app-shared/utils/postMessages';
+import AltinnPopoverSimple from 'app-shared/components/molecules/AltinnPopoverSimple';
+import { Typography } from '@material-ui/core';
+import { getLanguageFromKey } from 'app-shared/utils/language';
 import NavigationActionDispatcher from './actions/navigationActions/navigationActionDispatcher';
 import './App.css';
 import { redirects } from './config/redirects';
@@ -29,11 +32,8 @@ import { fetchRepoStatus } from './features/handleMergeConflict/handleMergeConfl
 import { makeGetRepoStatusSelector } from './features/handleMergeConflict/handleMergeConflictSelectors';
 import { ApplicationMetadataActions } from './sharedResources/applicationMetadata/applicationMetadataSlice';
 import { fetchLanguage } from './utils/fetchLanguage/languageSlice';
-import { getRepoStatusUrl } from './utils/urlHelper';
+import { repoStatusUrl } from './utils/urlHelper';
 import { fetchRemainingSession, keepAliveSession, signOutUser } from './sharedResources/user/userSlice';
-import AltinnPopoverSimple from 'app-shared/components/molecules/AltinnPopoverSimple';
-import { Typography } from '@material-ui/core';
-import { getLanguageFromKey } from 'app-shared/utils/language';
 
 const theme = createMuiTheme(altinnTheme);
 
@@ -71,8 +71,7 @@ export interface IServiceDevelopmentProps extends WithStyles<typeof styles>, ISe
   serviceName: any;
   remainingSessionMinutes: number;
 }
-export interface IServiceDevelopmentAppState {
-  forceRepoStatusCheckComplete: boolean;
+interface IServiceDevelopmentAppState {
   sessionExpiredPopoverRef: React.RefObject<HTMLDivElement>;
   remainingSessionMinutes: number;
   lastKeepAliveTimestamp: number;
@@ -84,31 +83,20 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
   constructor(_props: IServiceDevelopmentProps, _state: IServiceDevelopmentAppState) {
     super(_props, _state);
     this.state = {
-      forceRepoStatusCheckComplete: true,
       sessionExpiredPopoverRef: React.createRef<HTMLDivElement>(),
       remainingSessionMinutes: _props.remainingSessionMinutes,
       lastKeepAliveTimestamp: 0,
     };
   }
 
-  public componentDidUpdate(_prevProps: IServiceDevelopmentProps) {
-    if (_prevProps.remainingSessionMinutes != this.props.remainingSessionMinutes) {
-      this.setState(_x => ({
-        remainingSessionMinutes: this.props.remainingSessionMinutes,
-      }));
-      return true;
-    }
-    return false;
-  }
-
   public componentDidMount() {
-    const { org, app } = window as Window as IAltinnWindow;
+    const { org, repo } = window as Window as IAltinnWindow;
     this.props.dispatch(fetchLanguage({
       url: `${window.location.origin}/designerapi/Language/GetLanguageAsJSON`,
       languageCode: 'nb',
     }));
     this.props.dispatch(HandleServiceInformationActions.fetchServiceName({
-      url: `${window.location.origin}/designer/${org}/${app}/Text/GetServiceName`,
+      url: `${window.location.origin}/designer/${org}/${repo}/Text/GetServiceName`,
     }));
     this.props.dispatch(ApplicationMetadataActions.getApplicationMetadata());
     this.props.dispatch(fetchRemainingSession());
@@ -117,19 +105,28 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
     window.addEventListener('message', this.windowEventReceived);
   }
 
+  public componentDidUpdate(_prevProps: IServiceDevelopmentProps) {
+    if (_prevProps.remainingSessionMinutes !== this.props.remainingSessionMinutes) {
+      this.setState(() => ({
+        remainingSessionMinutes: this.props.remainingSessionMinutes,
+      }));
+      return true;
+    }
+    return false;
+  }
+
   public componentWillUnmount() {
     window.removeEventListener('message', this.windowEventReceived);
     this.removeEventListeners();
   }
 
   public checkForMergeConflict = () => {
-    const { org, app } = window as Window as IAltinnWindow;
-    const repoStatusUrl = getRepoStatusUrl();
+    const { org, repo } = window as Window as IAltinnWindow;
 
     this.props.dispatch(fetchRepoStatus({
       url: repoStatusUrl,
       org,
-      repo: app,
+      repo,
     }));
   }
 
@@ -139,7 +136,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
       (this.state.remainingSessionMinutes > 10) &&
       (this.state.remainingSessionMinutes <= 30) &&
       ((timeNow - this.state.lastKeepAliveTimestamp) > TEN_MINUTE_IN_MILLISECONDS)) {
-      this.setState(_x => ({
+      this.setState(() => ({
         lastKeepAliveTimestamp: timeNow,
       }));
       this.props.dispatch((keepAliveSession()));
@@ -177,7 +174,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
     } else {
       // user clicked outside the popover or pressed "continue", keep signed in
       this.props.dispatch(keepAliveSession());
-      this.setState(_x => ({
+      this.setState(() => ({
         lastKeepAliveTimestamp: Date.now(),
       }));
     }
@@ -185,39 +182,36 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
 
   public render() {
     const { classes, repoStatus } = this.props;
-    const { org, app } = window as Window as IAltinnWindow;
+    const { org, repo } = window as Window as IAltinnWindow;
 
     return (
       <React.Fragment>
         <MuiThemeProvider theme={theme}>
           <Router>
             <div className={classes.container} ref={this.state.sessionExpiredPopoverRef}>
-            <AltinnPopoverSimple
-              anchorEl={(this.state.remainingSessionMinutes < 11) ? this.state.sessionExpiredPopoverRef : null}
-              anchorOrigin={{vertical: 'top', horizontal: 'center'}}
-              transformOrigin={{vertical: 'top', horizontal: 'center'}}
-              handleClose={(event: string) => this.handleSessionExpiresClose(event)}
-              btnCancelText={getLanguageFromKey('general.sign_out', this.props.language)}
-              btnConfirmText={getLanguageFromKey('general.continue', this.props.language)}
-              btnClick={this.handleSessionExpiresClose}
-              paperProps={{ style: { margin: '2.4rem' }}}
-              children={
-                <>
-                  <Typography variant={'h2'}>
-                    {getLanguageFromKey('session.expires', this.props.language)}
-                  </Typography>
-                  <Typography variant={'body1'} style={{ marginTop: '1.6rem'} }>
-                    {getLanguageFromKey('session.inactive', this.props.language)}
-                  </Typography>
-                </>
-              }
-              />
+              <AltinnPopoverSimple
+                anchorEl={(this.state.remainingSessionMinutes < 11) ? this.state.sessionExpiredPopoverRef : null}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                handleClose={(event: string) => this.handleSessionExpiresClose(event)}
+                btnCancelText={getLanguageFromKey('general.sign_out', this.props.language)}
+                btnConfirmText={getLanguageFromKey('general.continue', this.props.language)}
+                btnClick={this.handleSessionExpiresClose}
+                paperProps={{ style: { margin: '2.4rem' } }}
+              >
+                <Typography variant='h2'>
+                  {getLanguageFromKey('session.expires', this.props.language)}
+                </Typography>
+                <Typography variant='body1' style={{ marginTop: '1.6rem' }}>
+                  {getLanguageFromKey('session.inactive', this.props.language)}
+                </Typography>
+              </AltinnPopoverSimple>
               <Grid container={true} direction='row'>
                 <Grid item={true} xs={12}>
                   {repoStatus.hasMergeConflict !== true ?
-                    redirects.map((route, index) => (
+                    redirects.map((route) => (
                       <Route
-                        key={index}
+                        key={route.to}
                         exact={true}
                         path={route.from}
                         render={() => (
@@ -228,9 +222,9 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                     :
                     null
                   }
-                  {routes.map((route, index) => (
+                  {routes.map((route) => (
                     <Route
-                      key={index}
+                      key={route.path}
                       path={route.path}
                       exact={route.exact}
                       render={(props) => <AppBarComponent
@@ -240,7 +234,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                         activeSubHeaderSelection={route.activeSubHeaderSelection}
                         logoutButton={repoStatus.hasMergeConflict}
                         org={org}
-                        app={app}
+                        app={repo}
                         showBreadcrumbOnTablet={true}
                         showSubHeader={!repoStatus.hasMergeConflict}
                       />}
@@ -252,9 +246,9 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                     !repoStatus.hasMergeConflict ?
                       <Hidden smDown>
                         <div style={{ top: 50 }}>
-                          {routes.map((route, index) => (
+                          {routes.map((route) => (
                             <Route
-                              key={index}
+                              key={route.path}
                               path={route.path}
                               exact={route.exact}
                               render={(props) => <LeftDrawerMenu
@@ -289,9 +283,9 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                       </div>
                       :
                       <div className={classes.subApp}>
-                        {routes.map((route, index) => (
+                        {routes.map((route) => (
                           <Route
-                            key={index}
+                            key={route.path}
                             path={route.path}
                             exact={route.exact}
                             render={(props) => <route.subapp
@@ -315,19 +309,16 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
 
 const makeMapStateToProps = () => {
   const GetRepoStatusSelector = makeGetRepoStatusSelector();
-  const mapStateToProps = (
+  return (
     state: IServiceDevelopmentState,
     props: IServiceDevelopmentProvidedProps,
-  ) => {
-    return {
-      repoStatus: GetRepoStatusSelector(state),
-      language: state.languageState.language,
-      serviceName: state.serviceInformation.serviceNameObj ? state.serviceInformation.serviceNameObj.name : '',
-      dispatch: props.dispatch,
-      remainingSessionMinutes: state.userState.session.remainingMinutes,
-    };
-  };
-  return mapStateToProps;
+  ) => ({
+    repoStatus: GetRepoStatusSelector(state),
+    language: state.languageState.language,
+    serviceName: state.serviceInformation.serviceNameObj ? state.serviceInformation.serviceNameObj.name : '',
+    dispatch: props.dispatch,
+    remainingSessionMinutes: state.userState.session.remainingMinutes,
+  });
 };
 
 export default compose(

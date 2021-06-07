@@ -41,12 +41,12 @@ namespace Altinn.Studio.Designer.Controllers
         /// Method that 
         /// </summary>
         /// <param name="org">the org owning the models repo</param>
-        /// <param name="app">the model repos</param>
+        /// <param name="repo">the model repos</param>
         /// <param name="modelName">The name of the data model.</param>
         [Authorize]
         [HttpPut]
-        [Route("/designer/api/{org}/{app}/datamodels/[Action]")]
-        public async Task<IActionResult> UpdateDatamodel(string org, string app, string modelName)
+        [Route("/designer/api/{org}/{repo}/datamodels/[Action]")]
+        public async Task<IActionResult> UpdateDatamodel(string org, string repo, string modelName)
         {
             SchemaKeywordCatalog.Add<InfoKeyword>();
 
@@ -70,7 +70,7 @@ namespace Altinn.Studio.Designer.Controllers
                 JsonSchema jsonSchemas = new Manatee.Json.Serialization.JsonSerializer().Deserialize<JsonSchema>(jsonValue);
 
                 // Create the directory if it does not exist
-                string appPath = _repository.GetAppPath(org, app);
+                string appPath = _repository.GetAppPath(org, repo);
                 string directory = appPath + Path.GetDirectoryName(filePath);
                 if (!Directory.Exists(directory))
                 {
@@ -82,14 +82,14 @@ namespace Altinn.Studio.Designer.Controllers
                 JsonValue toar = serializer.Serialize(jsonSchemas);
                 byte[] byteArray = Encoding.UTF8.GetBytes(toar.ToString());
                 MemoryStream jsonstream = new MemoryStream(byteArray);
-                await _repository.WriteData(org, app, $"{filePath}.schema.json", jsonstream);
+                await _repository.WriteData(org, repo, $"{filePath}.schema.json", jsonstream);
 
                 // update meta data
-                JsonSchemaToInstanceModelGenerator converter = new JsonSchemaToInstanceModelGenerator(org, app, jsonSchemas);
+                JsonSchemaToInstanceModelGenerator converter = new JsonSchemaToInstanceModelGenerator(org, repo, jsonSchemas);
                 ModelMetadata modelMetadata = converter.GetModelMetadata();
                 string root = modelMetadata.Elements != null && modelMetadata.Elements.Count > 0 ? modelMetadata.Elements.Values.First(e => e.ParentElement == null).TypeName : null;
-                _repository.UpdateApplicationWithAppLogicModel(org, app, modelName, "Altinn.App.Models." + root);
-                _repository.UpdateModelMetadata(org, app, modelMetadata, modelName);
+                _repository.UpdateApplicationWithAppLogicModel(org, repo, modelName, "Altinn.App.Models." + root);
+                _repository.UpdateModelMetadata(org, repo, modelMetadata, modelName);
 
                 // Convert to XML Schema and store in repository
                 JsonSchemaToXsd jsonSchemaToXsd = new JsonSchemaToXsd();
@@ -99,14 +99,14 @@ namespace Altinn.Studio.Designer.Controllers
                 xwriter.Formatting = Formatting.Indented;
                 xwriter.WriteStartDocument(false);
                 xmlschema.Write(xsdStream);
-                await _repository.WriteData(org, app, $"{filePath}.xsd", xsdStream);
+                await _repository.WriteData(org, repo, $"{filePath}.xsd", xsdStream);
 
                 // Generate updated C# model
                 JsonMetadataParser modelGenerator = new JsonMetadataParser();
                 string classes = modelGenerator.CreateModelFromMetadata(modelMetadata);
                 byteArray = Encoding.UTF8.GetBytes(classes);
                 MemoryStream stream = new MemoryStream(byteArray);
-                await _repository.WriteData(org, app, $"{filePath}.cs", stream);
+                await _repository.WriteData(org, repo, $"{filePath}.cs", stream);
             }
 
             return Ok();

@@ -49,21 +49,21 @@ namespace Altinn.Studio.Designer.Controllers
         /// Gets all app files for specified mode.
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileEditorMode">The mode for which files should be fetched.</param>
         /// <returns>A comma-separated list of all the files.</returns>
-        public ActionResult GetServiceFiles(string org, string app, FileEditorMode fileEditorMode)
+        public ActionResult GetServiceFiles(string org, string repo, FileEditorMode fileEditorMode)
         {
             switch (fileEditorMode)
             {
                 case FileEditorMode.Implementation:
-                    return GetImplementationFiles(org, app);
+                    return GetImplementationFiles(org, repo);
                 case FileEditorMode.Calculation:
-                    return GetCalculationFiles(org, app);
+                    return GetCalculationFiles(org, repo);
                 case FileEditorMode.Dynamics:
-                    return GetResourceFiles(org, app, true);
+                    return GetResourceFiles(org, repo, true);
                 case FileEditorMode.Validation:
-                    return GetValidationFiles(org, app);
+                    return GetValidationFiles(org, repo);
                 default:
                     return Content(string.Empty);
             }
@@ -73,11 +73,11 @@ namespace Altinn.Studio.Designer.Controllers
         /// Gets the content of a specified file for the app.
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileEditorMode">The mode for which files should be fetched.</param>
         /// <param name="fileName">The name of the file to fetch.</param>
         /// <returns>The content of the file.</returns>
-        public ActionResult GetServiceFile(string org, string app, FileEditorMode fileEditorMode, string fileName)
+        public ActionResult GetServiceFile(string org, string repo, FileEditorMode fileEditorMode, string fileName)
         {
             if (!ApplicationHelper.IsValidFilename(fileName))
             {
@@ -88,22 +88,22 @@ namespace Altinn.Studio.Designer.Controllers
             switch (fileEditorMode)
             {
                 case FileEditorMode.Implementation:
-                    file = _repository.GetAppLogic(org, app, fileName);
+                    file = _repository.GetAppLogic(org, repo, fileName);
                     break;
                 case FileEditorMode.Calculation:
-                    file = _repository.GetAppLogic(org, app, "Calculation/" + fileName);
+                    file = _repository.GetAppLogic(org, repo, "Calculation/" + fileName);
                     break;
                 case FileEditorMode.Validation:
-                    file = _repository.GetAppLogic(org, app, "Validation/" + fileName);
+                    file = _repository.GetAppLogic(org, repo, "Validation/" + fileName);
                     break;
                 case FileEditorMode.Dynamics:
-                    file = _repository.GetRuleHandler(org, app);
+                    file = _repository.GetRuleHandler(org, repo);
                     break;
                 case FileEditorMode.All:
-                    file = _repository.GetConfiguration(org, app, fileName);
+                    file = _repository.GetConfiguration(org, repo, fileName);
                     break;
                 case FileEditorMode.Root:
-                    file = _repository.GetFileByRelativePath(org, app, fileName);
+                    file = _repository.GetFileByRelativePath(org, repo, fileName);
                     break;
                 default:
                     break;
@@ -116,13 +116,13 @@ namespace Altinn.Studio.Designer.Controllers
         /// Gets the content of a specified file for the app.
         /// </summary>
         /// <param name="org">Unique identifier of the organisation responsible for the app.</param>
-        /// <param name="app">Application identifier which is unique within an organisation.</param>
+        /// <param name="repo">Application identifier which is unique within an organisation.</param>
         /// <param name="fileEditorMode">The mode for which files should be saved.</param>
         /// <param name="fileName">The name of the file to save.</param>
         /// <param name="stageFile">true if the file needs to be staged</param>
         /// <returns>The content of the file.</returns>
         [HttpPost]
-        public ActionResult<HttpResponseMessage> SaveServiceFile(string org, string app, FileEditorMode fileEditorMode, string fileName, bool stageFile)
+        public ActionResult<HttpResponseMessage> SaveServiceFile(string org, string repo, FileEditorMode fileEditorMode, string fileName, bool stageFile)
         {
             if (!ApplicationHelper.IsValidFilename(fileName))
             {
@@ -141,22 +141,22 @@ namespace Altinn.Studio.Designer.Controllers
                 switch (fileEditorMode)
                 {
                     case FileEditorMode.Implementation:
-                        _repository.SaveAppLogicFile(org, app, fileName, content);
+                        _repository.SaveAppLogicFile(org, repo, fileName, content);
                         break;
                     case FileEditorMode.Dynamics:
-                        _repository.SaveRuleHandler(org, app, content);
+                        _repository.SaveRuleHandler(org, repo, content);
                         break;
                     case FileEditorMode.Calculation:
-                        _repository.SaveAppLogicFile(org, app, "Calculation/" + fileName, content);
+                        _repository.SaveAppLogicFile(org, repo, "Calculation/" + fileName, content);
                         break;
                     case FileEditorMode.Validation:
-                        _repository.SaveAppLogicFile(org, app, "Validation/" + fileName, content);
+                        _repository.SaveAppLogicFile(org, repo, "Validation/" + fileName, content);
                         break;
                     case FileEditorMode.All:
-                        _repository.SaveConfiguration(org, app, fileName, content);
+                        _repository.SaveConfiguration(org, repo, fileName, content);
                         break;
                     case FileEditorMode.Root:
-                        _repository.SaveFile(org, app, fileName, content);
+                        _repository.SaveFile(org, repo, fileName, content);
                         break;
                     default:
                         // Return 501 Not Implemented
@@ -165,7 +165,7 @@ namespace Altinn.Studio.Designer.Controllers
 
                 if (stageFile)
                 {
-                    _sourceControl.StageChange(org, app, fileName);
+                    _sourceControl.StageChange(org, repo, fileName);
                 }
 
                 return new HttpResponseMessage(HttpStatusCode.OK);
@@ -185,9 +185,9 @@ namespace Altinn.Studio.Designer.Controllers
 
         private ActionResult GetCalculationFiles(string org, string app)
         {
-          List<AltinnCoreFile> files = _repository.GetCalculationFiles(org, app);
+            List<AltinnCoreFile> files = _repository.GetCalculationFiles(org, app);
 
-          return Content(GetCommaSeparatedFileList(files), "text/plain", Encoding.UTF8);
+            return Content(GetCommaSeparatedFileList(files), "text/plain", Encoding.UTF8);
         }
 
         private ActionResult GetValidationFiles(string org, string app)

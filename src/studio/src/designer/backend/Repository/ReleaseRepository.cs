@@ -28,12 +28,12 @@ namespace Altinn.Studio.Designer.Repository
         /// Gets the succeeded release
         /// </summary>
         /// <param name="org">Organisation</param>
-        /// <param name="app">App</param>
+        /// <param name="repo">App</param>
         /// <param name="tagName">Tag name</param>
         /// <returns></returns>
-        public async Task<ReleaseEntity> GetSucceededReleaseFromDb(string org, string app, string tagName)
+        public async Task<ReleaseEntity> GetSucceededReleaseFromDb(string org, string repo, string tagName)
         {
-            SqlQuerySpec sqlQuerySpec = CreateSqlQueryToGetSucceededRelease(org, app, tagName);
+            SqlQuerySpec sqlQuerySpec = CreateSqlQueryToGetSucceededRelease(org, repo, tagName);
             IEnumerable<ReleaseEntity> releases = await GetWithSqlAsync<ReleaseEntity>(sqlQuerySpec, org);
             return releases.Single();
         }

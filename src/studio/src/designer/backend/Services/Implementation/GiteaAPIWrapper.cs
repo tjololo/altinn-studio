@@ -82,7 +82,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
             else
             {
-                _logger.LogError("Cold not retrieve teams for user " + AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext) + " GetTeams failed with statuscode " + response.StatusCode);         
+                _logger.LogError("Cold not retrieve teams for user " + AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext) + " GetTeams failed with statuscode " + response.StatusCode);
             }
 
             return teams;
@@ -247,7 +247,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             }
             else
             {
-                _logger.LogError($"User {AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)} fetching app {org}/{repository} failed with reponsecode {response.StatusCode}");
+                _logger.LogError($"User {AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext)} fetching repo {org}/{repository} failed with reponsecode {response.StatusCode}");
             }
 
             Stopwatch watchOwnerType = Stopwatch.StartNew();
@@ -374,16 +374,16 @@ namespace Altinn.Studio.Designer.Services.Implementation
         }
 
         /// <inheritdoc />
-        public async Task<FileSystemObject> GetFileAsync(string org, string app, string filePath, string shortCommitId)
+        public async Task<FileSystemObject> GetFileAsync(string org, string repo, string filePath, string shortCommitId)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync($"repos/{org}/{app}/contents/{filePath}?ref={shortCommitId}");
+            HttpResponseMessage response = await _httpClient.GetAsync($"repos/{org}/{repo}/contents/{filePath}?ref={shortCommitId}");
             return await response.Content.ReadAsAsync<FileSystemObject>();
         }
 
         /// <inheritdoc/>
-        public async Task<List<FileSystemObject>> GetDirectoryAsync(string org, string app, string directoryPath, string shortCommitId)
+        public async Task<List<FileSystemObject>> GetDirectoryAsync(string org, string repo, string directoryPath, string shortCommitId)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync($"repos/{org}/{app}/contents/{directoryPath}?ref={shortCommitId}");
+            HttpResponseMessage response = await _httpClient.GetAsync($"repos/{org}/{repo}/contents/{directoryPath}?ref={shortCommitId}");
             return await response.Content.ReadAsAsync<List<FileSystemObject>>();
         }
 
@@ -484,14 +484,14 @@ namespace Altinn.Studio.Designer.Services.Implementation
             return htmlValues;
         }
 
-        private bool IsLocalRepo(string org, string app)
+        private bool IsLocalRepo(string org, string repo)
         {
-            string localAppRepoFolder = _settings.GetServicePath(org, app, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
+            string localAppRepoFolder = _settings.GetServicePath(org, repo, AuthenticationHelper.GetDeveloperUserName(_httpContextAccessor.HttpContext));
             if (Directory.Exists(localAppRepoFolder))
             {
                 try
                 {
-                    using (LibGit2Sharp.Repository repo = new LibGit2Sharp.Repository(localAppRepoFolder))
+                    using (new LibGit2Sharp.Repository(localAppRepoFolder))
                     {
                         return true;
                     }

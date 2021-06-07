@@ -20,7 +20,7 @@ namespace Altinn.Studio.Designer.Controllers
     [ApiController]
     [Authorize]
     [AutoValidateAntiforgeryToken]
-    [Route("/designer/api/v1/{org}/{app}/[controller]")]
+    [Route("/designer/api/v1/{org}/{repo}/[controller]")]
     public class DeploymentsController : ControllerBase
     {
         private readonly IDeploymentService _deploymentService;

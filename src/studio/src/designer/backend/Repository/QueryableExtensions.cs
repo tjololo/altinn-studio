@@ -41,7 +41,7 @@ namespace Altinn.Studio.Designer.Repository
 
             if (!string.IsNullOrWhiteSpace(query.App))
             {
-                q = q.Where(x => x.App == query.App);
+                q = q.Where(x => x.Repo == query.App);
             }
 
             return q;

@@ -62,7 +62,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
 
             ReleaseEntity release = await _releaseRepository.GetSucceededReleaseFromDb(
                 deploymentEntity.Org,
-                deploymentEntity.App,
+                deploymentEntity.Repo,
                 deploymentEntity.TagName);
 
             await _applicationInformationService
@@ -122,7 +122,7 @@ namespace Altinn.Studio.Designer.Services.Implementation
             {
                 AppCommitId = release.TargetCommitish,
                 AppOwner = deploymentEntity.Org,
-                AppRepo = deploymentEntity.App,
+                AppRepo = deploymentEntity.Repo,
                 AppEnvironment = deploymentEntity.EnvironmentName,
                 Hostname = environmentHostname,
                 TagName = deploymentEntity.TagName

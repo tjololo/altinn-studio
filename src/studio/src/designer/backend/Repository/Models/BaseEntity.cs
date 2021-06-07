@@ -29,8 +29,8 @@ namespace Altinn.Studio.Designer.Repository.Models
         /// <summary>
         /// Application name
         /// </summary>
-        [JsonProperty("app")]
-        public string App { get; set; }
+        [JsonProperty("repo")]
+        public string Repo { get; set; }
 
         /// <summary>
         /// Organisation name
