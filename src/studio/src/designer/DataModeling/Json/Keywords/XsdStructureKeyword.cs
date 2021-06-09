@@ -20,7 +20,7 @@ namespace Altinn.Studio.DataModeling.Json.Keywords
         internal const string Name = "@xsdStructure";
 
         /// <summary>
-        /// The structure path
+        /// The structure type; sequence, all, choice...
         /// </summary>
         public string Value { get; }
 

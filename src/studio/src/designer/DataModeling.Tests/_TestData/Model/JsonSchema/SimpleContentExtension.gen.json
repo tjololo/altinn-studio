@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -21,7 +21,8 @@
       },
       "required": [
         "e1"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     }
   },
   "definitions": {
@@ -33,7 +34,8 @@
         },
         "a1": {
           "type": "string",
-          "@xsdType": "string"
+          "@xsdType": "string",
+          "@xsdAttribute": true
         }
       }
     }

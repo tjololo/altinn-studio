@@ -494,6 +494,8 @@ namespace DataModeling.Tests.Assertions
                 return;
             }
 
+            Assert.NotNull(actual);
+
             Assert.Equal(expected.Count, actual.Count);
 
             Dictionary<string, XmlAttribute> actualAttributes = actual.ToDictionary(attr => attr.Name);

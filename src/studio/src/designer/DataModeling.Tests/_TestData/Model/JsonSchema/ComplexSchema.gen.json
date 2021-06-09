@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -47,7 +47,8 @@
                     "address_swedish"
                   ]
                 }
-              ]
+              ],
+              "@xsdStructure": "choice"
             },
             {
               "properties": {
@@ -71,7 +72,8 @@
                 "email"
               ]
             }
-          ]
+          ],
+          "@xsdStructure": "sequence"
         },
         {
           "$ref": "#/definitions/priorityAndTags",
@@ -82,16 +84,19 @@
     "priorityAndTags": {
       "properties": {
         "priority": {
-          "$ref": "#/definitions/priority"
+          "$ref": "#/definitions/priority",
+          "@xsdAttribute": true
         },
         "tags": {
-          "$ref": "#/definitions/tags"
+          "$ref": "#/definitions/tags",
+          "@xsdAttribute": true
         }
       }
     },
     "contact": {
       "$ref": "#/definitions/name",
-      "@xsdType": "#ref"
+      "@xsdType": "#ref",
+      "@xsdStructure": "sequence"
     },
     "tags": {
       "type": "array",
@@ -133,7 +138,8 @@
         "title",
         "firstName",
         "lastName"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     },
     "title": {
       "allOf": [
@@ -178,7 +184,8 @@
         "zipCode",
         "city",
         "country"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     },
     "address_norwegian": {
       "allOf": [
@@ -220,7 +227,8 @@
             "zipCode",
             "city",
             "country"
-          ]
+          ],
+          "@xsdStructure": "sequence"
         }
       ]
     },
@@ -264,7 +272,8 @@
             "zipCode",
             "city",
             "country"
-          ]
+          ],
+          "@xsdStructure": "sequence"
         }
       ]
     }

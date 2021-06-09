@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
 using Altinn.Studio.DataModeling.Json.Keywords;
-using Altinn.Studio.DataModeling.Visitor;
 using Altinn.Studio.DataModeling.Visitor.Json;
 using DataModeling.Tests.Assertions;
 using Json.Schema;

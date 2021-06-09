@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -22,7 +22,8 @@
       "allOf": [
         {
           "$ref": "#/definitions/g1",
-          "@xsdType": "#ref"
+          "@xsdType": "#ref",
+          "@xsdStructure": "sequence"
         },
         {
           "$ref": "#/definitions/ag1",
@@ -32,7 +33,8 @@
           "properties": {
             "a1": {
               "$ref": "#/definitions/a1",
-              "@xsdType": "#ref"
+              "@xsdType": "#ref",
+              "@xsdAttribute": true
             }
           }
         },
@@ -55,24 +57,28 @@
       },
       "required": [
         "e1"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     },
     "e1": {
       "type": "string",
       "@xsdType": "string"
     },
     "a1": {
-      "$ref": "#/definitions/st1"
+      "$ref": "#/definitions/st1",
+      "@xsdAttribute": true
     },
     "ag1": {
       "properties": {
         "ag1_1": {
           "type": "string",
-          "@xsdType": "string"
+          "@xsdType": "string",
+          "@xsdAttribute": true
         },
         "ag1_2": {
           "type": "string",
-          "@xsdType": "string"
+          "@xsdType": "string",
+          "@xsdAttribute": true
         }
       }
     },
@@ -80,11 +86,13 @@
       "properties": {
         "ag2_1": {
           "type": "string",
-          "@xsdType": "string"
+          "@xsdType": "string",
+          "@xsdAttribute": true
         },
         "ag2_2": {
           "type": "string",
-          "@xsdType": "string"
+          "@xsdType": "string",
+          "@xsdAttribute": true
         }
       }
     }

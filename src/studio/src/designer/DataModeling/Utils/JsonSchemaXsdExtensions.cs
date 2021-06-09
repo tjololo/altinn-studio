@@ -24,6 +24,18 @@ namespace Altinn.Studio.DataModeling.Utils
         }
 
         /// <summary>
+        /// Add <see cref="XsdAttributeKeyword"/> keyword to the builder
+        /// </summary>
+        /// <param name="builder">The <see cref="JsonSchemaBuilder"/></param>
+        /// <param name="attribute">True to set the attribute keyword</param>
+        /// <returns>The <see cref="JsonSchemaBuilder"/> used for chaining</returns>
+        public static JsonSchemaBuilder XsdAttribute(this JsonSchemaBuilder builder, bool attribute = true)
+        {
+            builder.Add(new XsdAttributeKeyword(attribute));
+            return builder;
+        }
+
+        /// <summary>
         /// Add <see cref="XsdAnyAttributeKeyword"/> keyword to the builder
         /// </summary>
         /// <param name="builder">The <see cref="JsonSchemaBuilder"/></param>
@@ -80,6 +92,18 @@ namespace Altinn.Studio.DataModeling.Utils
         public static JsonSchemaBuilder XsdStructure(this JsonSchemaBuilder builder, XmlStructureItem structure)
         {
             builder.Add(new XsdStructureKeyword(structure.GetPath()));
+            return builder;
+        }
+
+        /// <summary>
+        /// Add <see cref="XsdStructureKeyword"/> keyword to the builder
+        /// </summary>
+        /// <param name="builder">The <see cref="JsonSchemaBuilder"/></param>
+        /// <param name="value">The structure type; sequence, all, choice...</param>
+        /// <returns>The <see cref="JsonSchemaBuilder"/> used for chaining</returns>
+        public static JsonSchemaBuilder XsdStructure(this JsonSchemaBuilder builder, string value)
+        {
+            builder.Add(new XsdStructureKeyword(value));
             return builder;
         }
 

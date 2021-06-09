@@ -26,9 +26,9 @@ namespace DataModeling.Tests
             JsonSchema actual = converter.Convert(xsd);
             string json = JsonSerializer.Serialize(actual, new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true });
 
-            //string genPath = Path.GetFileNameWithoutExtension(expectedPath);
-            //genPath = Path.Combine(@"D:\Dev\altinn-studio\src\studio\src\designer\DataModeling.Tests\_TestData\Model\JsonSchema", genPath + ".gen.json");
-            //await File.WriteAllTextAsync(genPath, json, Encoding.UTF8);
+            string genPath = Path.GetFileNameWithoutExtension(expectedPath);
+            genPath = Path.Combine(@"C:\Dev\altinn-studio\src\studio\src\designer\DataModeling.Tests\_TestData\Model\JsonSchema", genPath + ".gen.json");
+            await File.WriteAllTextAsync(genPath, json, Encoding.UTF8);
 
             // Assert
             JsonSchemaAssertions.IsEquivalentTo(expected, actual);

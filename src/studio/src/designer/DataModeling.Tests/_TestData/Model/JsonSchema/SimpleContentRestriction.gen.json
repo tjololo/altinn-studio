@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -22,7 +22,8 @@
       },
       "required": [
         "title"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     }
   },
   "definitions": {
@@ -38,11 +39,13 @@
             },
             "lang": {
               "type": "string",
-              "@xsdType": "language"
+              "@xsdType": "language",
+              "@xsdAttribute": true
             },
             "note": {
               "type": "string",
-              "@xsdType": "token"
+              "@xsdType": "token",
+              "@xsdAttribute": true
             }
           }
         }
@@ -56,11 +59,13 @@
         },
         "lang": {
           "type": "string",
-          "@xsdType": "language"
+          "@xsdType": "language",
+          "@xsdAttribute": true
         },
         "note": {
           "type": "string",
-          "@xsdType": "token"
+          "@xsdType": "token",
+          "@xsdAttribute": true
         }
       }
     }

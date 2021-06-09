@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -17,15 +17,14 @@
     "Root": {
       "properties": {
         "e1": {
-          "$comment": "<brreg:tekst brreg:lang=\"EN\" brreg:teksttype=\"LEDE\" xmlns:brreg=\"http://www.brreg.no/or\"><p>Appinfo</p></brreg:tekst>",
-          "description": "<brreg:tekst brreg:lang=\"EN\" brreg:teksttype=\"LEDE\" xmlns:brreg=\"http://www.brreg.no/or\"><p>Documentation</p></brreg:tekst>",
           "type": "string",
           "@xsdType": "string"
         }
       },
       "required": [
         "e1"
-      ]
+      ],
+      "@xsdStructure": "sequence"
     }
   }
 }

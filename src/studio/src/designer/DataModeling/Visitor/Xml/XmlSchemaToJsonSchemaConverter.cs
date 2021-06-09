@@ -234,6 +234,7 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
                 builder.Const(item.FixedValue.AsJsonElement());
             }
 
+            builder.XsdAttribute();
             AddUnhandledAttributes(item, builder);
         }
 
@@ -511,6 +512,7 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             if (choices.Count > 0)
             {
                 builder.OneOf(choices);
+                builder.XsdStructure("choice");
             }
         }
 
@@ -527,6 +529,7 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             }
 
             properties.Build(builder);
+            builder.XsdStructure("all");
         }
 
         private void HandleSequence(XmlSchemaSequence sequence, bool optional, bool array, JsonSchemaBuilder builder)
@@ -567,6 +570,7 @@ namespace Altinn.Studio.DataModeling.Visitor.Xml
             properties.AddCurrentPropertiesToStep(steps);
 
             steps.BuildWithAllOf(builder);
+            builder.XsdStructure("sequence");
         }
 
         private void HandleSimpleContent(XmlSchemaSimpleContent item, bool optional, bool array, JsonSchemaBuilder builder)

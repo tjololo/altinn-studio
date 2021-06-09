@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schema.json",
   "type": "object",
   "@xsdNamespaces": {
@@ -39,7 +39,8 @@
                 "i2"
               ]
             }
-          ]
+          ],
+          "@xsdStructure": "choice"
         },
         {
           "properties": {
@@ -63,7 +64,8 @@
             "o2"
           ]
         }
-      ]
+      ],
+      "@xsdStructure": "choice"
     }
   }
 }
