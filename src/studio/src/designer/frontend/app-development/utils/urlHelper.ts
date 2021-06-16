@@ -2,57 +2,37 @@ const {
   location, org, repo,
 } = window as Window as IAltinnWindow;
 const { origin } = location;
+const cdn = 'https://altinncdn.no';
+const desingerApi = `${origin}/designer/api`;
+const datamodels = `${desingerApi}/${org}/${repo}/datamodels`;
 
 export const repoStatusUrl = `${origin}/designerapi/Repository/RepoStatus?org=${org}&repository=${repo}`;
-export const releasesPostUrl = `${origin}/designer/api/v1/${org}/${repo}/releases`;
-export const releasesGetUrl = `${releasesPostUrl}?sortBy=created&sortDirection=Descending`;
 export const languageUrl = `${origin}/designerapi/Language/GetLanguageAsJSON`;
-export const orgsListUrl = 'https://altinncdn.no/orgs/altinn-orgs.json';
+export const giteaSignOutUrl = `${origin}/repos/user/logout`;
+export const studioSignOutUrl = `${origin}/Home/Logout`;
+export const releasesPostUrl = `${desingerApi}/v1/${org}/${repo}/releases`;
+export const appDeploymentsUrl = `${desingerApi}/v1/${org}/${repo}/Deployments`;
+export const keepAliveUrl = `${desingerApi}/v1/session/keepalive`;
+export const fetchDeployPermissionsUrl = `${desingerApi}/v1/${org}/${repo}/deployments/permissions`;
+export const remainingSessionTimeUrl = `${desingerApi}/v1/session/remaining`;
+export const releasesGetUrl = `${releasesPostUrl}?sortBy=created&sortDirection=Descending`;
+export const orgsListUrl = `${cdn}/orgs/altinn-orgs.json`;
+export const environmentsConfigUrl = `${cdn}/config/environments.json`;
 
-export const getReleaseBuildPipelineLink = (buildId: string) => `https://dev.azure.com/brreg/altinn-studio/_build/results?buildId=${buildId}`;
+export const getReleaseBuildPipelineLink =
+  (buildId: string) => `https://dev.azure.com/brreg/altinn-studio/_build/results?buildId=${buildId}`;
 
-export const getGitCommitLink = (commitId: string) => `${origin}/repos/${org}/${repo}/commit/${commitId}`;
+export const getGitCommitLink =
+  (commitId: string) => `${origin}/repos/${org}/${repo}/commit/${commitId}`;
 
-export const getAzureDevopsBuildResultUrl = (buildId: string | number): string => {
-  return `https://dev.azure.com/brreg/altinn-studio/_build/results?buildId=${buildId}`;
-};
+export const getAzureDevopsBuildResultUrl =
+  (buildId: string | number) => `https://dev.azure.com/brreg/altinn-studio/_build/results?buildId=${buildId}`;
 
-export const getEnvironmentsConfigUrl = (): string => {
-  return 'https://altinncdn.no/config/environments.json';
-};
+export const getFetchDataModelUrl =
+  (modelName: string) => `${datamodels}/GetDatamodel?modelName=${encodeURIComponent(modelName)}`;
 
-export const getAppDeploymentsUrl = () => {
-  return `${origin}/designer/api/v1/${org}/${repo}/Deployments`;
-};
+export const getSaveDataModelUrl =
+  (modelName: string) => `${datamodels}/UpdateDatamodel?modelName=${encodeURIComponent(modelName)}`;
 
-export const getFetchDataModelUrl = (modelName: string) => {
-  return `${origin}/designer/api/${org}/${repo}/datamodels/GetDatamodel?modelName=${encodeURIComponent(modelName)}`;
-};
-
-export const getSaveDataModelUrl = (modelName: string) => {
-  return `${origin}/designer/api/${org}/${repo}/datamodels/UpdateDatamodel?modelName=${encodeURIComponent(modelName)}`;
-};
-
-export const getDeleteDataModelUrl = (modelName: string) => {
-  return `${origin}/designer/api/${org}/${repo}/datamodels/DeleteDatamodel?modelName=${encodeURIComponent(modelName)}`;
-};
-
-export const getFetchDeployPermissionsUrl = () => {
-  return `${origin}/designer/api/v1/${org}/${repo}/deployments/permissions`;
-};
-
-export const getRemainingSessionTimeUrl = () => {
-  return `${origin}/designer/api/v1/session/remaining`;
-};
-
-export const getKeepAliveUrl = () => {
-  return `${origin}/designer/api/v1/session/keepalive`;
-};
-
-export const getGiteaSignOutUrl = () => {
-  return `${origin}/repos/user/logout`;
-};
-
-export const getStudioSignOutUrl = () => {
-  return `${origin}/Home/Logout`;
-};
+export const getDeleteDataModelUrl =
+  (modelName: string) => `${datamodels}/DeleteDatamodel?modelName=${encodeURIComponent(modelName)}`;
