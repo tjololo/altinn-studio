@@ -183,6 +183,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
   public render() {
     const { classes, repoStatus } = this.props;
     const { org, repo } = window as Window as IAltinnWindow;
+    const isDatamodelsRepo = repo.endsWith('-datamodels');
 
     return (
       <React.Fragment>
@@ -208,7 +209,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
               </AltinnPopoverSimple>
               <Grid container={true} direction='row'>
                 <Grid item={true} xs={12}>
-                  {repoStatus.hasMergeConflict !== true ?
+                  {!repoStatus.hasMergeConflict &&
                     redirects.map((route) => (
                       <Route
                         key={route.to}
@@ -219,8 +220,6 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                         )}
                       />
                     ))
-                    :
-                    null
                   }
                   {routes.map((route) => (
                     <Route
@@ -236,7 +235,7 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                         org={org}
                         app={repo}
                         showBreadcrumbOnTablet={true}
-                        showSubHeader={!repoStatus.hasMergeConflict}
+                        showSubMenu={!(repoStatus.hasMergeConflict || isDatamodelsRepo)}
                       />}
                     />
                   ))}
@@ -244,28 +243,39 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                 <Grid item={true} xs={12}>
                   {
                     !repoStatus.hasMergeConflict ?
-                      <Hidden smDown>
-                        <div style={{ top: 50 }}>
+                      <>
+                        <Hidden smDown>
+                          <div style={{ top: 50 }}>
+                            {routes.map((route) => (
+                              <Route
+                                key={route.path}
+                                path={route.path}
+                                exact={route.exact}
+                                render={(props) => <LeftDrawerMenu
+                                  {...props}
+                                  menuType={route.menu}
+                                  activeLeftMenuSelection={route.activeLeftMenuSelection}
+                                />}
+                              />
+                            ))}
+                          </div>
+                        </Hidden>
+                        <div className={classes.subApp}>
                           {routes.map((route) => (
                             <Route
                               key={route.path}
                               path={route.path}
                               exact={route.exact}
-                              render={(props) => <LeftDrawerMenu
+                              render={(props) => <route.subapp
                                 {...props}
-                                menuType={route.menu}
-                                activeLeftMenuSelection={route.activeLeftMenuSelection}
+                                {...route.props}
+                                language={this.props.language}
                               />}
                             />
                           ))}
                         </div>
-                      </Hidden>
+                      </>
                       :
-                      null
-                  }
-
-                  {
-                    repoStatus.hasMergeConflict ?
                       <div
                         className={classNames({
                           [classes.mergeConflictApp]: repoStatus.hasMergeConflict,
@@ -280,21 +290,6 @@ class App extends React.Component<IServiceDevelopmentProps, IServiceDevelopmentA
                           />
                           <Redirect to='/mergeconflict' />
                         </Switch>
-                      </div>
-                      :
-                      <div className={classes.subApp}>
-                        {routes.map((route) => (
-                          <Route
-                            key={route.path}
-                            path={route.path}
-                            exact={route.exact}
-                            render={(props) => <route.subapp
-                              {...props}
-                              {...route.props}
-                              language={this.props.language}
-                            />}
-                          />
-                        ))}
                       </div>
                   }
                 </Grid>
